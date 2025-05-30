@@ -169,23 +169,22 @@ export default function MahjongScoreManager() {
 
     return (
       <TableHead
-        className={`cursor-pointer hover:bg-gray-50 select-none ${className}`}
+        className={`cursor-pointer hover:bg-gray-50 select-none text-xs p-1 ${className}`}
         onClick={() => handleSort(sortKey)}
       >
         <div className="flex items-center gap-1">
-          {children}
-          <div className="flex flex-col">
+          <span className="truncate">{children}</span>
+          <div className="flex flex-col flex-shrink-0">
             <div
-              className={`w-0 h-0 border-l-2 border-r-2 border-b-2 border-transparent ${
+              className={`w-0 h-0 border-l-[3px] border-r-[3px] border-b-[3px] border-transparent ${
                 direction === "asc" ? "border-b-gray-600" : "border-b-gray-300"
               }`}
-              style={{ borderBottomWidth: "4px", marginBottom: "1px" }}
+              style={{ marginBottom: "1px" }}
             />
             <div
-              className={`w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent ${
+              className={`w-0 h-0 border-l-[3px] border-r-[3px] border-t-[3px] border-transparent ${
                 direction === "desc" ? "border-t-gray-600" : "border-t-gray-300"
               }`}
-              style={{ borderTopWidth: "4px" }}
             />
           </div>
         </div>
@@ -720,46 +719,69 @@ export default function MahjongScoreManager() {
     return rank.toFixed(2)
   }
 
-  return (
-    <div className="container mx-auto p-4 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">ナインリーグ成績入力</h1>
-        <p className="text-muted-foreground mb-4">4人麻雀の成績を記録・管理できます</p>
+  // 名前を短縮表示
+  const truncateName = (name: string, maxLength = 6) => {
+    return name.length > maxLength ? `${name.slice(0, maxLength)}...` : name
+  }
 
-        <Tabs value={currentView} onValueChange={handleTabChange}>
-          <TabsList className="grid grid-cols-6">
-            <TabsTrigger value="input">成績入力</TabsTrigger>
-            <TabsTrigger value="playerRanking">プレイヤーランキング</TabsTrigger>
-            <TabsTrigger value="teamRanking">チームランキング</TabsTrigger>
-            <TabsTrigger value="playerManagement" className="flex items-center gap-1">
-              <User className="w-4 h-4" />
-              プレイヤー管理
-              <Lock className="w-3 h-3" />
-            </TabsTrigger>
-            <TabsTrigger value="teamManagement" className="flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              チーム管理
-              <Lock className="w-3 h-3" />
-            </TabsTrigger>
-            <TabsTrigger value="gameHistory" className="flex items-center gap-1">
-              <History className="w-4 h-4" />
-              過去の成績
-              <Lock className="w-3 h-3" />
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+  return (
+    <div className="container mx-auto p-2 sm:p-4 max-w-7xl">
+      <div className="mb-4 sm:mb-8">
+        <h1 className="text-xl sm:text-3xl font-bold mb-2">ナインリーグ成績入力</h1>
+
+        <div className="w-full overflow-x-auto">
+          <Tabs value={currentView} onValueChange={handleTabChange}>
+            <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full min-w-[600px] sm:min-w-0">
+              <TabsTrigger value="input" className="text-xs sm:text-sm px-1 sm:px-3">
+                成績入力
+              </TabsTrigger>
+              <TabsTrigger value="playerRanking" className="text-xs sm:text-sm px-1 sm:px-3">
+                プレイヤー
+              </TabsTrigger>
+              <TabsTrigger value="teamRanking" className="text-xs sm:text-sm px-1 sm:px-3">
+                チーム
+              </TabsTrigger>
+              <TabsTrigger value="playerManagement" className="text-xs sm:text-sm px-1 sm:px-3">
+                <div className="flex items-center gap-1">
+                  <User className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">プレイヤー管理</span>
+                  <span className="sm:hidden">P管理</span>
+                  <Lock className="w-2 h-2 sm:w-3 sm:h-3" />
+                </div>
+              </TabsTrigger>
+              <TabsTrigger value="teamManagement" className="text-xs sm:text-sm px-1 sm:px-3">
+                <div className="flex items-center gap-1">
+                  <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">チーム管理</span>
+                  <span className="sm:hidden">T管理</span>
+                  <Lock className="w-2 h-2 sm:w-3 sm:h-3" />
+                </div>
+              </TabsTrigger>
+              <TabsTrigger value="gameHistory" className="text-xs sm:text-sm px-1 sm:px-3">
+                <div className="flex items-center gap-1">
+                  <History className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">過去の成績</span>
+                  <span className="sm:hidden">履歴</span>
+                  <Lock className="w-2 h-2 sm:w-3 sm:h-3" />
+                </div>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       {/* パスワード認証ダイアログ */}
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
-            <DialogTitle>管理画面へのアクセス</DialogTitle>
-            <DialogDescription>管理画面にアクセスするにはパスワードが必要です</DialogDescription>
+            <DialogTitle className="text-lg">管理画面へのアクセス</DialogTitle>
+            <DialogDescription className="text-sm">管理画面にアクセスするにはパスワードが必要です</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">パスワード</Label>
+              <Label htmlFor="password" className="text-sm">
+                パスワード
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -767,13 +789,14 @@ export default function MahjongScoreManager() {
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handlePasswordSubmit()}
+                className="text-sm"
               />
             </div>
             <div className="flex gap-2">
-              <Button onClick={handlePasswordSubmit} className="flex-1">
+              <Button onClick={handlePasswordSubmit} className="flex-1 text-sm">
                 認証
               </Button>
-              <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)} className="text-sm">
                 キャンセル
               </Button>
             </div>
@@ -784,26 +807,32 @@ export default function MahjongScoreManager() {
       {currentView === "input" && (
         <div>
           {/* 成績入力フォーム */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="w-5 h-5" />
+          <Card className="mb-4 sm:mb-8">
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                 新しいゲーム結果を入力
               </CardTitle>
-              <CardDescription>プレイヤーと持ち点を入力してください（持ち点の合計は10万点）</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
+                プレイヤーと持ち点を入力してください（持ち点の合計は10万点）
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-6">
+              <div className="space-y-2 sm:space-y-4">
                 {players.map((player, index) => (
-                  <div key={index} className="space-y-2">
+                  <div key={index} className="space-y-1 sm:space-y-2">
                     <div className="flex gap-2">
                       <Select value={player.name} onValueChange={(value) => updatePlayerName(index, value)}>
-                        <SelectTrigger className="flex-1">
+                        <SelectTrigger className="flex-1 text-xs sm:text-sm h-8 sm:h-10">
                           <SelectValue placeholder="プレイヤーを選択" />
                         </SelectTrigger>
                         <SelectContent>
                           {registeredPlayers.map((registeredPlayer) => (
-                            <SelectItem key={registeredPlayer.id} value={registeredPlayer.name}>
+                            <SelectItem
+                              key={registeredPlayer.id}
+                              value={registeredPlayer.name}
+                              className="text-xs sm:text-sm"
+                            >
                               {registeredPlayer.name}
                             </SelectItem>
                           ))}
@@ -814,7 +843,7 @@ export default function MahjongScoreManager() {
                         placeholder="持ち点"
                         value={player.points || ""}
                         onChange={(e) => updatePlayerPoints(index, Number.parseInt(e.target.value) || 0)}
-                        className="w-32"
+                        className="w-20 sm:w-32 text-xs sm:text-sm h-8 sm:h-10"
                       />
                     </div>
                   </div>
@@ -822,13 +851,17 @@ export default function MahjongScoreManager() {
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="text-sm">
+                <div className="text-xs sm:text-sm">
                   <span className="text-muted-foreground">持ち点合計: </span>
                   <span className={currentTotal === 100000 ? "text-green-600" : "text-red-600"}>
                     {currentTotal.toLocaleString()}点
                   </span>
                 </div>
-                <Button onClick={saveGameResult} disabled={currentTotal !== 100000}>
+                <Button
+                  onClick={saveGameResult}
+                  disabled={currentTotal !== 100000}
+                  className="text-xs sm:text-sm h-8 sm:h-10"
+                >
                   成績を保存
                 </Button>
               </div>
@@ -839,27 +872,29 @@ export default function MahjongScoreManager() {
 
       {currentView === "playerRanking" && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="w-5 h-5" />
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
               プレイヤーランキング
             </CardTitle>
-            <CardDescription>プレイヤー別の通算成績（累計スコア順）</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">プレイヤー別の通算成績（累計スコア順）</CardDescription>
           </CardHeader>
           <CardContent>
             {/* チームフィルター */}
-            <div className="flex items-center gap-2 mb-4">
-              <Label htmlFor="team-filter" className="text-sm font-medium">
-                チームでフィルター:
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <Label htmlFor="team-filter" className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                チーム:
               </Label>
               <Select value={teamFilter} onValueChange={setTeamFilter}>
-                <SelectTrigger id="team-filter" className="w-48">
+                <SelectTrigger id="team-filter" className="w-32 sm:w-48 text-xs sm:text-sm h-8 sm:h-10">
                   <SelectValue placeholder="チームを選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">すべてのチーム</SelectItem>
+                  <SelectItem value="all" className="text-xs sm:text-sm">
+                    すべてのチーム
+                  </SelectItem>
                   {teams.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>
+                    <SelectItem key={team.id} value={team.id} className="text-xs sm:text-sm">
                       {team.name}
                     </SelectItem>
                   ))}
@@ -868,38 +903,42 @@ export default function MahjongScoreManager() {
             </div>
 
             {gameResults.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">成績データがありません</div>
+              <div className="text-center py-8 text-muted-foreground text-sm">成績データがありません</div>
             ) : (
               <div className="space-y-4">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-16">順位</TableHead>
-                        <SortableHeader sortKey="name">プレイヤー</SortableHeader>
-                        <SortableHeader sortKey="teamName">チーム</SortableHeader>
-                        <SortableHeader sortKey="totalScore" className="text-right">
-                          累計スコア
+                        <TableHead className="w-8 sm:w-12 text-xs p-1">順位</TableHead>
+                        <SortableHeader sortKey="name" className="w-16 sm:w-24">
+                          プレイヤー
                         </SortableHeader>
-                        <SortableHeader sortKey="gameCount" className="text-right">
-                          ゲーム数
+                        <SortableHeader sortKey="teamName" className="w-12 sm:w-20">
+                          チーム
                         </SortableHeader>
-                        <SortableHeader sortKey="averageScore" className="text-right">
-                          平均スコア
+                        <SortableHeader sortKey="totalScore" className="text-right w-12 sm:w-16">
+                          累計
                         </SortableHeader>
-                        <SortableHeader sortKey="averageRank" className="text-right">
-                          平均順位
+                        <SortableHeader sortKey="gameCount" className="text-right w-8 sm:w-12">
+                          G数
                         </SortableHeader>
-                        <SortableHeader sortKey="wins" className="text-right">
+                        <SortableHeader sortKey="averageScore" className="text-right w-12 sm:w-16">
+                          平均
+                        </SortableHeader>
+                        <SortableHeader sortKey="averageRank" className="text-right w-12 sm:w-16">
+                          順位
+                        </SortableHeader>
+                        <SortableHeader sortKey="wins" className="text-right w-6 sm:w-8">
                           1位
                         </SortableHeader>
-                        <SortableHeader sortKey="seconds" className="text-right">
+                        <SortableHeader sortKey="seconds" className="text-right w-6 sm:w-8">
                           2位
                         </SortableHeader>
-                        <SortableHeader sortKey="thirds" className="text-right">
+                        <SortableHeader sortKey="thirds" className="text-right w-6 sm:w-8">
                           3位
                         </SortableHeader>
-                        <SortableHeader sortKey="fourths" className="text-right">
+                        <SortableHeader sortKey="fourths" className="text-right w-6 sm:w-8">
                           4位
                         </SortableHeader>
                       </TableRow>
@@ -912,21 +951,30 @@ export default function MahjongScoreManager() {
 
                         return (
                           <TableRow key={player.name}>
-                            <TableCell className="font-medium">{rankByTotalScore}</TableCell>
-                            <TableCell className="font-medium">{player.name}</TableCell>
-                            <TableCell>
-                              <span className={`px-2 py-1 rounded text-xs ${player.teamColor}`}>{player.teamName}</span>
+                            <TableCell className="font-medium text-xs p-1">{rankByTotalScore}</TableCell>
+                            <TableCell className="font-medium text-xs p-1">
+                              <span className="truncate block" title={player.name}>
+                                {truncateName(player.name, 8)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-xs p-1">
+                              <span
+                                className={`px-1 py-0.5 rounded text-[10px] sm:text-xs ${player.teamColor} truncate block`}
+                                title={player.teamName}
+                              >
+                                {truncateName(player.teamName, 4)}
+                              </span>
                             </TableCell>
                             <TableCell
-                              className={`text-right font-medium ${
+                              className={`text-right font-medium text-xs p-1 ${
                                 player.totalScore > 0 ? "text-green-600" : player.totalScore < 0 ? "text-red-600" : ""
                               }`}
                             >
                               {formatScore(player.totalScore)}
                             </TableCell>
-                            <TableCell className="text-right">{player.gameCount}</TableCell>
+                            <TableCell className="text-right text-xs p-1">{player.gameCount}</TableCell>
                             <TableCell
-                              className={`text-right ${
+                              className={`text-right text-xs p-1 ${
                                 player.averageScore > 0
                                   ? "text-green-600"
                                   : player.averageScore < 0
@@ -936,11 +984,13 @@ export default function MahjongScoreManager() {
                             >
                               {formatScore(player.averageScore)}
                             </TableCell>
-                            <TableCell className="text-right">{formatAverageRank(player.averageRank)}</TableCell>
-                            <TableCell className="text-right">{player.wins}</TableCell>
-                            <TableCell className="text-right">{player.seconds}</TableCell>
-                            <TableCell className="text-right">{player.thirds}</TableCell>
-                            <TableCell className="text-right">{player.fourths}</TableCell>
+                            <TableCell className="text-right text-xs p-1">
+                              {formatAverageRank(player.averageRank)}
+                            </TableCell>
+                            <TableCell className="text-right text-xs p-1">{player.wins}</TableCell>
+                            <TableCell className="text-right text-xs p-1">{player.seconds}</TableCell>
+                            <TableCell className="text-right text-xs p-1">{player.thirds}</TableCell>
+                            <TableCell className="text-right text-xs p-1">{player.fourths}</TableCell>
                           </TableRow>
                         )
                       })}
@@ -950,7 +1000,7 @@ export default function MahjongScoreManager() {
 
                 {/* フィルター結果の表示 */}
                 {teamFilter !== "all" && (
-                  <div className="text-sm text-muted-foreground text-center">
+                  <div className="text-xs text-muted-foreground text-center">
                     {(() => {
                       const playerStats = calculatePlayerStats()
                       const filteredCount = playerStats.filter((player) => player.teamId === teamFilter).length
@@ -967,48 +1017,50 @@ export default function MahjongScoreManager() {
 
       {currentView === "teamRanking" && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
               チームランキング
             </CardTitle>
-            <CardDescription>チーム別の通算成績（累計スコア順）</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">チーム別の通算成績（累計スコア順）</CardDescription>
           </CardHeader>
           <CardContent>
             {gameResults.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">成績データがありません</div>
+              <div className="text-center py-8 text-muted-foreground text-sm">成績データがありません</div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-16">順位</TableHead>
-                      <SortableHeader sortKey="name">チーム</SortableHeader>
-                      <SortableHeader sortKey="playerCount" className="text-right">
-                        メンバー数
+                      <TableHead className="w-8 sm:w-12 text-xs p-1">順位</TableHead>
+                      <SortableHeader sortKey="name" className="w-16 sm:w-24">
+                        チーム
                       </SortableHeader>
-                      <SortableHeader sortKey="totalScore" className="text-right">
-                        累計スコア
+                      <SortableHeader sortKey="playerCount" className="text-right w-8 sm:w-12">
+                        人数
                       </SortableHeader>
-                      <SortableHeader sortKey="gameCount" className="text-right">
-                        ゲーム数
+                      <SortableHeader sortKey="totalScore" className="text-right w-12 sm:w-16">
+                        累計
                       </SortableHeader>
-                      <SortableHeader sortKey="averageScore" className="text-right">
-                        平均スコア
+                      <SortableHeader sortKey="gameCount" className="text-right w-8 sm:w-12">
+                        G数
                       </SortableHeader>
-                      <SortableHeader sortKey="averageRank" className="text-right">
-                        平均順位
+                      <SortableHeader sortKey="averageScore" className="text-right w-12 sm:w-16">
+                        平均
                       </SortableHeader>
-                      <SortableHeader sortKey="wins" className="text-right">
+                      <SortableHeader sortKey="averageRank" className="text-right w-12 sm:w-16">
+                        順位
+                      </SortableHeader>
+                      <SortableHeader sortKey="wins" className="text-right w-6 sm:w-8">
                         1位
                       </SortableHeader>
-                      <SortableHeader sortKey="seconds" className="text-right">
+                      <SortableHeader sortKey="seconds" className="text-right w-6 sm:w-8">
                         2位
                       </SortableHeader>
-                      <SortableHeader sortKey="thirds" className="text-right">
+                      <SortableHeader sortKey="thirds" className="text-right w-6 sm:w-8">
                         3位
                       </SortableHeader>
-                      <SortableHeader sortKey="fourths" className="text-right">
+                      <SortableHeader sortKey="fourths" className="text-right w-6 sm:w-8">
                         4位
                       </SortableHeader>
                     </TableRow>
@@ -1021,31 +1073,38 @@ export default function MahjongScoreManager() {
 
                       return (
                         <TableRow key={team.id}>
-                          <TableCell className="font-medium">{rankByTotalScore}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded text-xs ${team.color}`}>{team.name}</span>
+                          <TableCell className="font-medium text-xs p-1">{rankByTotalScore}</TableCell>
+                          <TableCell className="text-xs p-1">
+                            <span
+                              className={`px-1 py-0.5 rounded text-[10px] sm:text-xs ${team.color} truncate block`}
+                              title={team.name}
+                            >
+                              {truncateName(team.name, 8)}
+                            </span>
                           </TableCell>
-                          <TableCell className="text-right">{team.playerCount}</TableCell>
+                          <TableCell className="text-right text-xs p-1">{team.playerCount}</TableCell>
                           <TableCell
-                            className={`text-right font-medium ${
+                            className={`text-right font-medium text-xs p-1 ${
                               team.totalScore > 0 ? "text-green-600" : team.totalScore < 0 ? "text-red-600" : ""
                             }`}
                           >
                             {formatScore(team.totalScore)}
                           </TableCell>
-                          <TableCell className="text-right">{team.gameCount}</TableCell>
+                          <TableCell className="text-right text-xs p-1">{team.gameCount}</TableCell>
                           <TableCell
-                            className={`text-right ${
+                            className={`text-right text-xs p-1 ${
                               team.averageScore > 0 ? "text-green-600" : team.averageScore < 0 ? "text-red-600" : ""
                             }`}
                           >
                             {formatScore(team.averageScore)}
                           </TableCell>
-                          <TableCell className="text-right">{formatAverageRank(team.averageRank)}</TableCell>
-                          <TableCell className="text-right">{team.wins}</TableCell>
-                          <TableCell className="text-right">{team.seconds}</TableCell>
-                          <TableCell className="text-right">{team.thirds}</TableCell>
-                          <TableCell className="text-right">{team.fourths}</TableCell>
+                          <TableCell className="text-right text-xs p-1">
+                            {formatAverageRank(team.averageRank)}
+                          </TableCell>
+                          <TableCell className="text-right text-xs p-1">{team.wins}</TableCell>
+                          <TableCell className="text-right text-xs p-1">{team.seconds}</TableCell>
+                          <TableCell className="text-right text-xs p-1">{team.thirds}</TableCell>
+                          <TableCell className="text-right text-xs p-1">{team.fourths}</TableCell>
                         </TableRow>
                       )
                     })}
@@ -1059,43 +1118,48 @@ export default function MahjongScoreManager() {
 
       {currentView === "playerManagement" && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="flex items-center justify-between text-lg sm:text-xl">
               <span className="flex items-center gap-2">
-                <User className="w-5 h-5" />
+                <User className="w-4 h-4 sm:w-5 sm:h-5" />
                 プレイヤー管理
               </span>
               <Dialog open={isPlayerDialogOpen} onOpenChange={setIsPlayerDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    プレイヤー追加
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm h-8 sm:h-10">
+                    <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    追加
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="w-[90vw] max-w-md">
                   <DialogHeader>
-                    <DialogTitle>新しいプレイヤーを追加</DialogTitle>
-                    <DialogDescription>プレイヤー名とチームを選択してください</DialogDescription>
+                    <DialogTitle className="text-lg">新しいプレイヤーを追加</DialogTitle>
+                    <DialogDescription className="text-sm">プレイヤー名とチームを選択してください</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="player-name">プレイヤー名</Label>
+                      <Label htmlFor="player-name" className="text-sm">
+                        プレイヤー名
+                      </Label>
                       <Input
                         id="player-name"
                         placeholder="プレイヤー名"
                         value={newPlayerName}
                         onChange={(e) => setNewPlayerName(e.target.value)}
+                        className="text-sm"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="player-team">所属チーム</Label>
+                      <Label htmlFor="player-team" className="text-sm">
+                        所属チーム
+                      </Label>
                       <Select value={newPlayerTeamId} onValueChange={setNewPlayerTeamId}>
-                        <SelectTrigger id="player-team">
+                        <SelectTrigger id="player-team" className="text-sm">
                           <SelectValue placeholder="チームを選択" />
                         </SelectTrigger>
                         <SelectContent>
                           {teams.map((team) => (
-                            <SelectItem key={team.id} value={team.id}>
+                            <SelectItem key={team.id} value={team.id} className="text-sm">
                               {team.name}
                             </SelectItem>
                           ))}
@@ -1103,10 +1167,10 @@ export default function MahjongScoreManager() {
                       </Select>
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={addNewPlayer} className="flex-1">
+                      <Button onClick={addNewPlayer} className="flex-1 text-sm">
                         追加
                       </Button>
-                      <Button variant="outline" onClick={() => setIsPlayerDialogOpen(false)}>
+                      <Button variant="outline" onClick={() => setIsPlayerDialogOpen(false)} className="text-sm">
                         キャンセル
                       </Button>
                     </div>
@@ -1117,25 +1181,27 @@ export default function MahjongScoreManager() {
           </CardHeader>
           <CardContent>
             {registeredPlayers.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">プレイヤーが登録されていません</p>
+              <p className="text-muted-foreground text-center py-4 text-sm">プレイヤーが登録されていません</p>
             ) : (
               <div className="space-y-2">
                 {registeredPlayers.map((player) => (
-                  <div key={player.id} className="flex items-center justify-between p-2 border rounded">
-                    <div className="flex items-center gap-2">
-                      <span>{player.name}</span>
-                      <span className={`px-2 py-1 rounded text-xs ${getTeamColor(player.teamId)}`}>
+                  <div key={player.id} className="flex items-center justify-between p-2 border rounded text-sm">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="truncate" title={player.name}>
+                        {player.name}
+                      </span>
+                      <span className={`px-2 py-1 rounded text-xs ${getTeamColor(player.teamId)} whitespace-nowrap`}>
                         {getTeamName(player.teamId)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <Select value={player.teamId} onValueChange={(value) => updatePlayerTeam(player.id, value)}>
-                        <SelectTrigger className="h-8 w-32">
+                        <SelectTrigger className="h-8 w-24 sm:w-32 text-xs">
                           <SelectValue placeholder="チーム変更" />
                         </SelectTrigger>
                         <SelectContent>
                           {teams.map((team) => (
-                            <SelectItem key={team.id} value={team.id}>
+                            <SelectItem key={team.id} value={team.id} className="text-xs">
                               {team.name}
                             </SelectItem>
                           ))}
@@ -1145,9 +1211,9 @@ export default function MahjongScoreManager() {
                         variant="outline"
                         size="sm"
                         onClick={() => deletePlayer(player.id)}
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   </div>
@@ -1160,23 +1226,23 @@ export default function MahjongScoreManager() {
 
       {currentView === "teamManagement" && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="flex items-center justify-between text-lg sm:text-xl">
               <span className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                 チーム管理
               </span>
               <Dialog open={isTeamDialogOpen} onOpenChange={setIsTeamDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Plus className="w-4 h-4 mr-2" />
-                    チーム追加
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm h-8 sm:h-10">
+                    <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    追加
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="w-[90vw] max-w-md">
                   <DialogHeader>
-                    <DialogTitle>新しいチームを追加</DialogTitle>
-                    <DialogDescription>チーム名を入力してください</DialogDescription>
+                    <DialogTitle className="text-lg">新しいチームを追加</DialogTitle>
+                    <DialogDescription className="text-sm">チーム名を入力してください</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <Input
@@ -1184,12 +1250,13 @@ export default function MahjongScoreManager() {
                       value={newTeamName}
                       onChange={(e) => setNewTeamName(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addNewTeam()}
+                      className="text-sm"
                     />
                     <div className="flex gap-2">
-                      <Button onClick={addNewTeam} className="flex-1">
+                      <Button onClick={addNewTeam} className="flex-1 text-sm">
                         追加
                       </Button>
-                      <Button variant="outline" onClick={() => setIsTeamDialogOpen(false)}>
+                      <Button variant="outline" onClick={() => setIsTeamDialogOpen(false)} className="text-sm">
                         キャンセル
                       </Button>
                     </div>
@@ -1201,10 +1268,10 @@ export default function MahjongScoreManager() {
           <CardContent>
             <div className="space-y-2">
               {teams.map((team) => (
-                <div key={team.id} className="flex items-center justify-between p-2 border rounded">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded text-xs ${team.color}`}>{team.name}</span>
-                    <span className="text-xs text-muted-foreground">
+                <div key={team.id} className="flex items-center justify-between p-2 border rounded text-sm">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className={`px-2 py-1 rounded text-xs ${team.color} whitespace-nowrap`}>{team.name}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {registeredPlayers.filter((p) => p.teamId === team.id).length}人
                     </span>
                   </div>
@@ -1213,9 +1280,9 @@ export default function MahjongScoreManager() {
                       variant="outline"
                       size="sm"
                       onClick={() => deleteTeam(team.id)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-red-600 hover:text-red-700 h-8 w-8 p-0 flex-shrink-0"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3 h-3" />
                     </Button>
                   )}
                 </div>
@@ -1227,31 +1294,33 @@ export default function MahjongScoreManager() {
 
       {currentView === "gameHistory" && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="w-5 h-5" />
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <History className="w-4 h-4 sm:w-5 sm:h-5" />
               過去の成績
             </CardTitle>
-            <CardDescription>保存された麻雀の成績一覧（{gameResults.length}件）</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
+              保存された麻雀の成績一覧（{gameResults.length}件）
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {gameResults.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">まだ成績が記録されていません</div>
+              <div className="text-center py-8 text-muted-foreground text-sm">まだ成績が記録されていません</div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {gameResults.map((result) => (
-                  <div key={result.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
+                  <div key={result.id} className="border rounded-lg p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2 sm:mb-3">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{result.date}</h3>
+                        <h3 className="font-semibold text-sm sm:text-base">{result.date}</h3>
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => deleteGameResult(result.id)}
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
 
@@ -1259,10 +1328,10 @@ export default function MahjongScoreManager() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>プレイヤー</TableHead>
-                            <TableHead className="text-right">持ち点</TableHead>
-                            <TableHead className="text-right">スコア</TableHead>
-                            <TableHead className="text-right">順位</TableHead>
+                            <TableHead className="text-xs p-1">プレイヤー</TableHead>
+                            <TableHead className="text-right text-xs p-1">持ち点</TableHead>
+                            <TableHead className="text-right text-xs p-1">スコア</TableHead>
+                            <TableHead className="text-right text-xs p-1">順位</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1272,21 +1341,27 @@ export default function MahjongScoreManager() {
 
                             return (
                               <TableRow key={index}>
-                                <TableCell className="font-medium">
-                                  <div className="flex items-center gap-2">
-                                    {player.name}
-                                    <span className={`px-2 py-1 rounded text-xs ${getTeamColor(teamId)}`}>
-                                      {getTeamName(teamId)}
+                                <TableCell className="font-medium text-xs p-1">
+                                  <div className="flex items-center gap-1 sm:gap-2">
+                                    <span className="truncate" title={player.name}>
+                                      {truncateName(player.name, 8)}
+                                    </span>
+                                    <span
+                                      className={`px-1 py-0.5 rounded text-[10px] ${getTeamColor(teamId)} whitespace-nowrap`}
+                                    >
+                                      {truncateName(getTeamName(teamId), 4)}
                                     </span>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-right">{player.points.toLocaleString()}点</TableCell>
+                                <TableCell className="text-right text-xs p-1">
+                                  {player.points.toLocaleString()}点
+                                </TableCell>
                                 <TableCell
-                                  className={`text-right ${player.score > 0 ? "text-green-600" : player.score < 0 ? "text-red-600" : ""}`}
+                                  className={`text-right text-xs p-1 ${player.score > 0 ? "text-green-600" : player.score < 0 ? "text-red-600" : ""}`}
                                 >
                                   {formatScore(player.score)}
                                 </TableCell>
-                                <TableCell className="text-right">{player.rank}位</TableCell>
+                                <TableCell className="text-right text-xs p-1">{player.rank}位</TableCell>
                               </TableRow>
                             )
                           })}
