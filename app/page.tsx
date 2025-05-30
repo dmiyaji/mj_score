@@ -62,10 +62,10 @@ const ADMIN_PASSWORD = "nine"
 export default function MahjongScoreManager() {
   // 成績入力用の状態
   const [players, setPlayers] = useState([
-    { name: "", points: 25000 },
-    { name: "", points: 25000 },
-    { name: "", points: 25000 },
-    { name: "", points: 25000 },
+    { name: "", points: 0 },
+    { name: "", points: 0 },
+    { name: "", points: 0 },
+    { name: "", points: 0 },
   ])
 
   // データベースから取得するデータ
