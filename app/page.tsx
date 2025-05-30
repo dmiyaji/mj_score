@@ -420,10 +420,12 @@ export default function MahjongScoreManager() {
     setPlayers(newPlayers)
   }
 
-  // プレイヤー持ち点の更新
+  // プレイヤー持ち点の更新関数を修正（下2桁を省略して入力できるように）
   const updatePlayerPoints = (index: number, points: number) => {
     const newPlayers = [...players]
-    newPlayers[index].points = points
+    // 入力された値に100を掛ける（下2桁を省略して入力）
+    const actualPoints = points * 100
+    newPlayers[index].points = actualPoints
     setPlayers(newPlayers)
   }
 
@@ -707,7 +709,7 @@ export default function MahjongScoreManager() {
     if (hasEmptyNames) {
       toast({
         title: "エラー",
-        description: "すべてのプレイヤーを選択してくだ��い",
+        description: "すべてのプレイヤーを選択してください",
         variant: "destructive",
       })
       return
@@ -1089,7 +1091,7 @@ export default function MahjongScoreManager() {
                 新しいゲーム結果を入力
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                プレイヤーと持ち点を入力してください（持ち点の合計は10万点）
+                プレイヤーと持ち点を入力してください（持ち点の合計は10万点、下2桁は省略して入力）
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-6">
@@ -1122,7 +1124,7 @@ export default function MahjongScoreManager() {
                       <Input
                         type="number"
                         placeholder="持ち点"
-                        value={player.points || ""}
+                        value={player.points / 100 || ""}
                         onChange={(e) => updatePlayerPoints(index, Number.parseInt(e.target.value) || 0)}
                         className="w-20 sm:w-32 text-xs sm:text-sm h-8 sm:h-10"
                       />
