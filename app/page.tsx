@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,29 +19,8 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Trash2, Plus, UserPlus, Users, Trophy, User, Lock, History } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
-interface GameResult {
-  id: string
-  date: string
-  players: {
-    name: string
-    points: number
-    score: number
-    rank: number
-  }[]
-}
-
-interface Team {
-  id: string
-  name: string
-  color: string
-}
-
-interface Player {
-  id: string
-  name: string
-  teamId: string
-}
+import { teamOperations, playerOperations, gameResultOperations, statsOperations } from "@/lib/database"
+import type { Team, Player, PlayerStats, TeamStats } from "@/lib/supabase"
 
 // チームのデフォルトカラー
 const TEAM_COLORS = [
@@ -59,21 +37,30 @@ const TEAM_COLORS = [
 const ADMIN_PASSWORD = "nine"
 
 export default function MahjongScoreManager() {
+  // 成績入力用の状態
   const [players, setPlayers] = useState([
     { name: "", points: 25000 },
     { name: "", points: 25000 },
     { name: "", points: 25000 },
     { name: "", points: 25000 },
   ])
-  const [gameResults, setGameResults] = useState<GameResult[]>([])
-  const [registeredPlayers, setRegisteredPlayers] = useState<Player[]>([])
+
+  // データベースから取得するデータ
   const [teams, setTeams] = useState<Team[]>([])
+  const [registeredPlayers, setRegisteredPlayers] = useState<Player[]>([])
+  const [gameResults, setGameResults] = useState<any[]>([])
+  const [playerStats, setPlayerStats] = useState<PlayerStats[]>([])
+  const [teamStats, setTeamStats] = useState<TeamStats[]>([])
+
+  // UI状態
   const [newPlayerName, setNewPlayerName] = useState("")
   const [newPlayerTeamId, setNewPlayerTeamId] = useState("")
   const [newTeamName, setNewTeamName] = useState("")
   const [isPlayerDialogOpen, setIsPlayerDialogOpen] = useState(false)
   const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+
   const [currentView, setCurrentView] = useState<
     "input" | "playerRanking" | "teamRanking" | "playerManagement" | "teamManagement" | "gameHistory"
   >("input")
@@ -88,6 +75,58 @@ export default function MahjongScoreManager() {
   const [passwordInput, setPasswordInput] = useState("")
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
   const [pendingView, setPendingView] = useState<string>("")
+
+  // データ読み込み
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [teamsData, playersData, gameResultsData] = await Promise.all([
+        teamOperations.getAll(),
+        playerOperations.getAll(),
+        gameResultOperations.getAll(),
+      ])
+
+      setTeams(teamsData)
+      setRegisteredPlayers(playersData)
+      setGameResults(gameResultsData)
+    } catch (error) {
+      console.error("データの読み込みに失敗しました:", error)
+      toast({
+        title: "エラー",
+        description: "データの読み込みに失敗しました",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 統計データ読み込み
+  const loadStats = async () => {
+    try {
+      const [playerStatsData, teamStatsData] = await Promise.all([
+        statsOperations.getPlayerStats(teamFilter),
+        statsOperations.getTeamStats(),
+      ])
+
+      setPlayerStats(playerStatsData)
+      setTeamStats(teamStatsData)
+    } catch (error) {
+      console.error("統計データの読み込みに失敗しました:", error)
+    }
+  }
+
+  // 初期データ読み込み
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  // 統計データ読み込み（チームフィルター変更時）
+  useEffect(() => {
+    if (currentView === "playerRanking" || currentView === "teamRanking") {
+      loadStats()
+    }
+  }, [currentView, teamFilter])
 
   // パスワード認証が必要な画面かチェック
   const requiresAuth = (view: string) => {
@@ -140,12 +179,10 @@ export default function MahjongScoreManager() {
       const aValue = a[key]
       const bValue = b[key]
 
-      // 数値の場合
       if (typeof aValue === "number" && typeof bValue === "number") {
         return direction === "asc" ? aValue - bValue : bValue - aValue
       }
 
-      // 文字列の場合
       if (typeof aValue === "string" && typeof bValue === "string") {
         return direction === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
       }
@@ -192,119 +229,6 @@ export default function MahjongScoreManager() {
     )
   }
 
-  // ローカルストレージから成績とプレイヤーを読み込み
-  useEffect(() => {
-    const savedResults = localStorage.getItem("mahjong-results")
-    const savedPlayers = localStorage.getItem("mahjong-players")
-    const savedTeams = localStorage.getItem("mahjong-teams")
-
-    // テスト用チームデータ
-    const testTeams: Team[] = [
-      { id: "default", name: "未所属", color: "bg-gray-100 text-gray-800" },
-      { id: "team1", name: "チーム赤龍", color: "bg-red-100 text-red-800" },
-      { id: "team2", name: "チーム青天", color: "bg-blue-100 text-blue-800" },
-      { id: "team3", name: "チーム緑風", color: "bg-green-100 text-green-800" },
-    ]
-
-    // テスト用プレイヤーデータ
-    const testPlayers: Player[] = [
-      { id: "p1", name: "田中太郎", teamId: "team1" },
-      { id: "p2", name: "佐藤花子", teamId: "team1" },
-      { id: "p3", name: "鈴木一郎", teamId: "team2" },
-      { id: "p4", name: "高橋美咲", teamId: "team2" },
-      { id: "p5", name: "伊藤健太", teamId: "team3" },
-      { id: "p6", name: "渡辺由美", teamId: "team3" },
-      { id: "p7", name: "山田次郎", teamId: "default" },
-      { id: "p8", name: "中村愛", teamId: "default" },
-    ]
-
-    // テスト用ゲーム結果データ
-    const testGameResults: GameResult[] = [
-      {
-        id: "g1",
-        date: "2024/01/15 19:30:00",
-        players: [
-          { name: "田中太郎", points: 35000, score: 35.0, rank: 1 },
-          { name: "鈴木一郎", points: 28000, score: 8.0, rank: 2 },
-          { name: "伊藤健太", points: 22000, score: -18.0, rank: 3 },
-          { name: "山田次郎", points: 15000, score: -25.0, rank: 4 },
-        ],
-      },
-      {
-        id: "g2",
-        date: "2024/01/14 20:15:00",
-        players: [
-          { name: "佐藤花子", points: 42000, score: 62.0, rank: 1 },
-          { name: "高橋美咲", points: 25000, score: 5.0, rank: 2 },
-          { name: "渡辺由美", points: 20000, score: -20.0, rank: 3 },
-          { name: "中村愛", points: 13000, score: -47.0, rank: 4 },
-        ],
-      },
-      {
-        id: "g3",
-        date: "2024/01/13 18:45:00",
-        players: [
-          { name: "鈴木一郎", points: 38000, score: 48.0, rank: 1 },
-          { name: "田中太郎", points: 27000, score: 7.0, rank: 2 },
-          { name: "渡辺由美", points: 21000, score: -19.0, rank: 3 },
-          { name: "佐藤花子", points: 14000, score: -36.0, rank: 4 },
-        ],
-      },
-      {
-        id: "g4",
-        date: "2024/01/12 21:00:00",
-        players: [
-          { name: "伊藤健太", points: 33000, score: 23.0, rank: 1 },
-          { name: "山田次郎", points: 29000, score: 9.0, rank: 2 },
-          { name: "高橋美咲", points: 24000, score: -16.0, rank: 3 },
-          { name: "中村愛", points: 14000, score: -16.0, rank: 3 },
-        ],
-      },
-      {
-        id: "g5",
-        date: "2024/01/11 19:20:00",
-        players: [
-          { name: "渡辺由美", points: 41000, score: 61.0, rank: 1 },
-          { name: "田中太郎", points: 26000, score: 6.0, rank: 2 },
-          { name: "鈴木一郎", points: 19000, score: -21.0, rank: 3 },
-          { name: "伊藤健太", points: 14000, score: -46.0, rank: 4 },
-        ],
-      },
-      {
-        id: "g6",
-        date: "2024/01/10 20:30:00",
-        players: [
-          { name: "高橋美咲", points: 36000, score: 36.0, rank: 1 },
-          { name: "中村愛", points: 28000, score: 8.0, rank: 2 },
-          { name: "佐藤花子", points: 23000, score: -17.0, rank: 3 },
-          { name: "山田次郎", points: 13000, score: -27.0, rank: 4 },
-        ],
-      },
-    ]
-
-    // データが存在しない場合はテストデータを使用
-    if (!savedTeams) {
-      setTeams(testTeams)
-      localStorage.setItem("mahjong-teams", JSON.stringify(testTeams))
-    } else {
-      setTeams(JSON.parse(savedTeams))
-    }
-
-    if (!savedPlayers) {
-      setRegisteredPlayers(testPlayers)
-      localStorage.setItem("mahjong-players", JSON.stringify(testPlayers))
-    } else {
-      setRegisteredPlayers(JSON.parse(savedPlayers))
-    }
-
-    if (!savedResults) {
-      setGameResults(testGameResults)
-      localStorage.setItem("mahjong-results", JSON.stringify(testGameResults))
-    } else {
-      setGameResults(JSON.parse(savedResults))
-    }
-  }, [])
-
   // プレイヤー名の更新
   const updatePlayerName = (index: number, name: string) => {
     const newPlayers = [...players]
@@ -320,7 +244,7 @@ export default function MahjongScoreManager() {
   }
 
   // 新しいプレイヤーを登録
-  const addNewPlayer = () => {
+  const addNewPlayer = async () => {
     if (newPlayerName.trim() === "") {
       toast({
         title: "エラー",
@@ -339,29 +263,30 @@ export default function MahjongScoreManager() {
       return
     }
 
-    const teamId = newPlayerTeamId || (teams.length > 0 ? teams[0].id : "default")
+    const teamId = newPlayerTeamId || (teams.length > 0 ? teams[0].id : "")
 
-    const newPlayer: Player = {
-      id: Date.now().toString(),
-      name: newPlayerName.trim(),
-      teamId: teamId,
+    try {
+      await playerOperations.create(newPlayerName.trim(), teamId)
+      await loadData()
+      setNewPlayerName("")
+      setNewPlayerTeamId("")
+      setIsPlayerDialogOpen(false)
+
+      toast({
+        title: "登録完了",
+        description: `${newPlayerName.trim()}を登録しました`,
+      })
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "プレイヤーの登録に失敗しました",
+        variant: "destructive",
+      })
     }
-
-    const updatedPlayers = [...registeredPlayers, newPlayer]
-    setRegisteredPlayers(updatedPlayers)
-    localStorage.setItem("mahjong-players", JSON.stringify(updatedPlayers))
-    setNewPlayerName("")
-    setNewPlayerTeamId("")
-    setIsPlayerDialogOpen(false)
-
-    toast({
-      title: "登録完了",
-      description: `${newPlayer.name}を登録しました`,
-    })
   }
 
   // 新しいチームを登録
-  const addNewTeam = () => {
+  const addNewTeam = async () => {
     if (newTeamName.trim() === "") {
       toast({
         title: "エラー",
@@ -380,43 +305,49 @@ export default function MahjongScoreManager() {
       return
     }
 
-    // ランダムにチームカラーを選択
     const randomColor = TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)]
 
-    const newTeam: Team = {
-      id: Date.now().toString(),
-      name: newTeamName.trim(),
-      color: randomColor,
+    try {
+      await teamOperations.create(newTeamName.trim(), randomColor)
+      await loadData()
+      setNewTeamName("")
+      setIsTeamDialogOpen(false)
+
+      toast({
+        title: "登録完了",
+        description: `チーム「${newTeamName.trim()}」を登録しました`,
+      })
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "チームの登録に失敗しました",
+        variant: "destructive",
+      })
     }
-
-    const updatedTeams = [...teams, newTeam]
-    setTeams(updatedTeams)
-    localStorage.setItem("mahjong-teams", JSON.stringify(updatedTeams))
-    setNewTeamName("")
-    setIsTeamDialogOpen(false)
-
-    toast({
-      title: "登録完了",
-      description: `チーム「${newTeam.name}」を登録しました`,
-    })
   }
 
   // プレイヤーを削除
-  const deletePlayer = (id: string) => {
-    const updatedPlayers = registeredPlayers.filter((player) => player.id !== id)
-    setRegisteredPlayers(updatedPlayers)
-    localStorage.setItem("mahjong-players", JSON.stringify(updatedPlayers))
-
-    toast({
-      title: "削除完了",
-      description: "プレイヤーを削除しました",
-    })
+  const deletePlayer = async (id: string) => {
+    try {
+      await playerOperations.delete(id)
+      await loadData()
+      toast({
+        title: "削除完了",
+        description: "プレイヤーを削除しました",
+      })
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "プレイヤーの削除に失敗しました",
+        variant: "destructive",
+      })
+    }
   }
 
   // チームを削除
-  const deleteTeam = (id: string) => {
-    // デフォルトチームは削除不可
-    if (id === "default") {
+  const deleteTeam = async (id: string) => {
+    // 未所属チームは削除不可
+    if (id === "00000000-0000-0000-0000-000000000001") {
       toast({
         title: "エラー",
         description: "未所属チームは削除できません",
@@ -425,42 +356,38 @@ export default function MahjongScoreManager() {
       return
     }
 
-    // このチームに所属するプレイヤーを未所属に変更
-    const updatedPlayers = registeredPlayers.map((player) => {
-      if (player.teamId === id) {
-        return { ...player, teamId: "default" }
-      }
-      return player
-    })
-    setRegisteredPlayers(updatedPlayers)
-    localStorage.setItem("mahjong-players", JSON.stringify(updatedPlayers))
-
-    // チームを削除
-    const updatedTeams = teams.filter((team) => team.id !== id)
-    setTeams(updatedTeams)
-    localStorage.setItem("mahjong-teams", JSON.stringify(updatedTeams))
-
-    toast({
-      title: "削除完了",
-      description: "チームを削除しました",
-    })
+    try {
+      await teamOperations.delete(id)
+      await loadData()
+      toast({
+        title: "削除完了",
+        description: "チームを削除しました",
+      })
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "チームの削除に失敗しました",
+        variant: "destructive",
+      })
+    }
   }
 
   // プレイヤーのチームを変更
-  const updatePlayerTeam = (playerId: string, teamId: string) => {
-    const updatedPlayers = registeredPlayers.map((player) => {
-      if (player.id === playerId) {
-        return { ...player, teamId }
-      }
-      return player
-    })
-    setRegisteredPlayers(updatedPlayers)
-    localStorage.setItem("mahjong-players", JSON.stringify(updatedPlayers))
-
-    toast({
-      title: "更新完了",
-      description: "プレイヤーのチームを変更しました",
-    })
+  const updatePlayerTeam = async (playerId: string, teamId: string) => {
+    try {
+      await playerOperations.update(playerId, { team_id: teamId })
+      await loadData()
+      toast({
+        title: "更新完了",
+        description: "プレイヤーのチームを変更しました",
+      })
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "プレイヤーのチーム変更に失敗しました",
+        variant: "destructive",
+      })
+    }
   }
 
   // スコア計算（持ち点から最終スコアを計算）
@@ -511,105 +438,8 @@ export default function MahjongScoreManager() {
     return playersWithScore.sort((a, b) => a.rank - b.rank)
   }
 
-  // プレイヤー統計を計算
-  const calculatePlayerStats = () => {
-    const playerStats = new Map()
-
-    gameResults.forEach((result) => {
-      result.players.forEach((player) => {
-        if (!playerStats.has(player.name)) {
-          // プレイヤーのチーム情報を取得
-          const registeredPlayer = registeredPlayers.find((p) => p.name === player.name)
-          const teamId = registeredPlayer?.teamId || "default"
-          const team = teams.find((t) => t.id === teamId) || teams[0]
-
-          playerStats.set(player.name, {
-            name: player.name,
-            teamId: teamId,
-            teamName: team.name,
-            teamColor: team.color,
-            totalScore: 0,
-            gameCount: 0,
-            totalRank: 0,
-            wins: 0,
-            seconds: 0,
-            thirds: 0,
-            fourths: 0,
-          })
-        }
-
-        const stats = playerStats.get(player.name)
-        stats.totalScore += player.score
-        stats.gameCount += 1
-        stats.totalRank += player.rank
-
-        if (player.rank === 1) stats.wins += 1
-        else if (player.rank === 2) stats.seconds += 1
-        else if (player.rank === 3) stats.thirds += 1
-        else if (player.rank === 4) stats.fourths += 1
-      })
-    })
-
-    return Array.from(playerStats.values())
-      .map((stats) => ({
-        ...stats,
-        averageScore: stats.gameCount > 0 ? stats.totalScore / stats.gameCount : 0,
-        averageRank: stats.gameCount > 0 ? stats.totalRank / stats.gameCount : 0,
-      }))
-      .sort((a, b) => b.totalScore - a.totalScore)
-  }
-
-  // チーム統計を計算
-  const calculateTeamStats = () => {
-    const playerStats = calculatePlayerStats()
-    const teamStats = new Map()
-
-    // チームごとに統計を集計（未所属チームを除外）
-    teams
-      .filter((team) => team.id !== "default")
-      .forEach((team) => {
-        teamStats.set(team.id, {
-          id: team.id,
-          name: team.name,
-          color: team.color,
-          totalScore: 0,
-          gameCount: 0,
-          playerCount: 0,
-          totalRank: 0,
-          wins: 0,
-          seconds: 0,
-          thirds: 0,
-          fourths: 0,
-        })
-      })
-
-    // プレイヤー統計からチーム統計を集計
-    playerStats.forEach((player) => {
-      const teamId = player.teamId
-      if (teamStats.has(teamId)) {
-        const team = teamStats.get(teamId)
-        team.totalScore += player.totalScore
-        team.gameCount += player.gameCount
-        team.playerCount += 1
-        team.totalRank += player.totalRank
-        team.wins += player.wins
-        team.seconds += player.seconds
-        team.thirds += player.thirds
-        team.fourths += player.fourths
-      }
-    })
-
-    return Array.from(teamStats.values())
-      .map((team) => ({
-        ...team,
-        averageScore: team.gameCount > 0 ? team.totalScore / team.gameCount : 0,
-        averageRank: team.gameCount > 0 ? team.totalRank / team.gameCount : 0,
-      }))
-      .sort((a, b) => b.totalScore - a.totalScore)
-  }
-
   // 成績を保存
-  const saveGameResult = () => {
+  const saveGameResult = async () => {
     // バリデーション
     const hasEmptyNames = players.some((player) => player.name.trim() === "")
     if (hasEmptyNames) {
@@ -633,78 +463,91 @@ export default function MahjongScoreManager() {
 
     const calculatedScores = calculateScores()
 
-    const newResult: GameResult = {
-      id: Date.now().toString(),
-      date: new Date().toLocaleString("ja-JP"),
-      players: calculatedScores,
+    try {
+      // プレイヤー名からIDを取得
+      const playerResults = calculatedScores.map((result) => {
+        const player = registeredPlayers.find((p) => p.name === result.name)
+        if (!player) {
+          throw new Error(`プレイヤー「${result.name}」が見つかりません`)
+        }
+        return {
+          playerId: player.id,
+          points: result.points,
+          score: result.score,
+          rank: result.rank,
+        }
+      })
+
+      await gameResultOperations.create(new Date().toISOString(), playerResults)
+      await loadData()
+
+      // フォームをリセット
+      setPlayers([
+        { name: "", points: 25000 },
+        { name: "", points: 25000 },
+        { name: "", points: 25000 },
+        { name: "", points: 25000 },
+      ])
+
+      toast({
+        title: "保存完了",
+        description: "成績を保存しました",
+      })
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "成績の保存に失敗しました",
+        variant: "destructive",
+      })
     }
-
-    const updatedResults = [newResult, ...gameResults]
-    setGameResults(updatedResults)
-    localStorage.setItem("mahjong-results", JSON.stringify(updatedResults))
-
-    // フォームをリセット
-    setPlayers([
-      { name: "", points: 25000 },
-      { name: "", points: 25000 },
-      { name: "", points: 25000 },
-      { name: "", points: 25000 },
-    ])
-
-    toast({
-      title: "保存完了",
-      description: "成績を保存しました",
-    })
   }
 
   // 成績を削除
-  const deleteGameResult = (id: string) => {
-    const updatedResults = gameResults.filter((result) => result.id !== id)
-    setGameResults(updatedResults)
-    localStorage.setItem("mahjong-results", JSON.stringify(updatedResults))
-
-    toast({
-      title: "削除完了",
-      description: "成績を削除しました",
-    })
+  const deleteGameResult = async (id: string) => {
+    try {
+      await gameResultOperations.delete(id)
+      await loadData()
+      toast({
+        title: "削除完了",
+        description: "成績を削除しました",
+      })
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "成績の削除に失敗しました",
+        variant: "destructive",
+      })
+    }
   }
 
   // 現在の持ち点合計を計算
   const currentTotal = players.reduce((sum, player) => sum + player.points, 0)
 
   // チーム名を取得
-  const getTeamName = (teamId: string) => {
+  const getTeamName = (teamId: string | null) => {
+    if (!teamId) return "未所属"
     const team = teams.find((t) => t.id === teamId)
     return team ? team.name : "未所属"
   }
 
   // チームカラーを取得
-  const getTeamColor = (teamId: string) => {
+  const getTeamColor = (teamId: string | null) => {
+    if (!teamId) return "bg-gray-100 text-gray-800"
     const team = teams.find((t) => t.id === teamId)
     return team ? team.color : "bg-gray-100 text-gray-800"
   }
 
   // プレイヤーランキングのデータを取得
   const getPlayerRankingData = () => {
-    const playerStats = calculatePlayerStats()
-
-    // チームフィルターを適用
-    const filteredData =
-      teamFilter === "all" ? playerStats : playerStats.filter((player) => player.teamId === teamFilter)
-
     // ソートを適用
-    const sortedData = sortConfig ? sortData(filteredData, sortConfig.key, sortConfig.direction) : filteredData
-
+    const sortedData = sortConfig ? sortData(playerStats, sortConfig.key, sortConfig.direction) : playerStats
     return sortedData
   }
 
   // チームランキングのデータを取得
   const getTeamRankingData = () => {
-    const teamStats = calculateTeamStats()
-
     // ソートを適用
     const sortedData = sortConfig ? sortData(teamStats, sortConfig.key, sortConfig.direction) : teamStats
-
     return sortedData
   }
 
@@ -722,6 +565,16 @@ export default function MahjongScoreManager() {
   // 名前を短縮表示
   const truncateName = (name: string, maxLength = 6) => {
     return name.length > maxLength ? `${name.slice(0, maxLength)}...` : name
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-4 max-w-7xl">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">データを読み込み中...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -902,7 +755,7 @@ export default function MahjongScoreManager() {
               </Select>
             </div>
 
-            {gameResults.length === 0 ? (
+            {playerStats.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">成績データがありません</div>
             ) : (
               <div className="space-y-4">
@@ -914,19 +767,19 @@ export default function MahjongScoreManager() {
                         <SortableHeader sortKey="name" className="w-16 sm:w-24">
                           プレイヤー
                         </SortableHeader>
-                        <SortableHeader sortKey="teamName" className="w-12 sm:w-20">
+                        <SortableHeader sortKey="team_name" className="w-12 sm:w-20">
                           チーム
                         </SortableHeader>
-                        <SortableHeader sortKey="totalScore" className="text-right w-12 sm:w-16">
+                        <SortableHeader sortKey="total_score" className="text-right w-12 sm:w-16">
                           累計
                         </SortableHeader>
-                        <SortableHeader sortKey="gameCount" className="text-right w-8 sm:w-12">
+                        <SortableHeader sortKey="game_count" className="text-right w-8 sm:w-12">
                           G数
                         </SortableHeader>
-                        <SortableHeader sortKey="averageScore" className="text-right w-12 sm:w-16">
+                        <SortableHeader sortKey="average_score" className="text-right w-12 sm:w-16">
                           平均
                         </SortableHeader>
-                        <SortableHeader sortKey="averageRank" className="text-right w-12 sm:w-16">
+                        <SortableHeader sortKey="average_rank" className="text-right w-12 sm:w-16">
                           順位
                         </SortableHeader>
                         <SortableHeader sortKey="wins" className="text-right w-6 sm:w-8">
@@ -944,56 +797,50 @@ export default function MahjongScoreManager() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {getPlayerRankingData().map((player) => {
-                        // 累計スコア順での順位を計算
-                        const allPlayerStats = calculatePlayerStats()
-                        const rankByTotalScore = allPlayerStats.findIndex((p) => p.name === player.name) + 1
-
-                        return (
-                          <TableRow key={player.name}>
-                            <TableCell className="font-medium text-xs p-1">{rankByTotalScore}</TableCell>
-                            <TableCell className="font-medium text-xs p-1">
-                              <span className="truncate block" title={player.name}>
-                                {truncateName(player.name, 8)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-xs p-1">
-                              <span
-                                className={`px-1 py-0.5 rounded text-[10px] sm:text-xs ${player.teamColor} truncate block`}
-                                title={player.teamName}
-                              >
-                                {truncateName(player.teamName, 4)}
-                              </span>
-                            </TableCell>
-                            <TableCell
-                              className={`text-right font-medium text-xs p-1 ${
-                                player.totalScore > 0 ? "text-green-600" : player.totalScore < 0 ? "text-red-600" : ""
-                              }`}
+                      {getPlayerRankingData().map((player, index) => (
+                        <TableRow key={player.id}>
+                          <TableCell className="font-medium text-xs p-1">{index + 1}</TableCell>
+                          <TableCell className="font-medium text-xs p-1">
+                            <span className="truncate block" title={player.name}>
+                              {truncateName(player.name, 8)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs p-1">
+                            <span
+                              className={`px-1 py-0.5 rounded text-[10px] sm:text-xs ${player.team_color} truncate block`}
+                              title={player.team_name}
                             >
-                              {formatScore(player.totalScore)}
-                            </TableCell>
-                            <TableCell className="text-right text-xs p-1">{player.gameCount}</TableCell>
-                            <TableCell
-                              className={`text-right text-xs p-1 ${
-                                player.averageScore > 0
-                                  ? "text-green-600"
-                                  : player.averageScore < 0
-                                    ? "text-red-600"
-                                    : ""
-                              }`}
-                            >
-                              {formatScore(player.averageScore)}
-                            </TableCell>
-                            <TableCell className="text-right text-xs p-1">
-                              {formatAverageRank(player.averageRank)}
-                            </TableCell>
-                            <TableCell className="text-right text-xs p-1">{player.wins}</TableCell>
-                            <TableCell className="text-right text-xs p-1">{player.seconds}</TableCell>
-                            <TableCell className="text-right text-xs p-1">{player.thirds}</TableCell>
-                            <TableCell className="text-right text-xs p-1">{player.fourths}</TableCell>
-                          </TableRow>
-                        )
-                      })}
+                              {truncateName(player.team_name, 4)}
+                            </span>
+                          </TableCell>
+                          <TableCell
+                            className={`text-right font-medium text-xs p-1 ${
+                              player.total_score > 0 ? "text-green-600" : player.total_score < 0 ? "text-red-600" : ""
+                            }`}
+                          >
+                            {formatScore(player.total_score)}
+                          </TableCell>
+                          <TableCell className="text-right text-xs p-1">{player.game_count}</TableCell>
+                          <TableCell
+                            className={`text-right text-xs p-1 ${
+                              player.average_score > 0
+                                ? "text-green-600"
+                                : player.average_score < 0
+                                  ? "text-red-600"
+                                  : ""
+                            }`}
+                          >
+                            {formatScore(player.average_score)}
+                          </TableCell>
+                          <TableCell className="text-right text-xs p-1">
+                            {formatAverageRank(player.average_rank)}
+                          </TableCell>
+                          <TableCell className="text-right text-xs p-1">{player.wins}</TableCell>
+                          <TableCell className="text-right text-xs p-1">{player.seconds}</TableCell>
+                          <TableCell className="text-right text-xs p-1">{player.thirds}</TableCell>
+                          <TableCell className="text-right text-xs p-1">{player.fourths}</TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
@@ -1002,8 +849,7 @@ export default function MahjongScoreManager() {
                 {teamFilter !== "all" && (
                   <div className="text-xs text-muted-foreground text-center">
                     {(() => {
-                      const playerStats = calculatePlayerStats()
-                      const filteredCount = playerStats.filter((player) => player.teamId === teamFilter).length
+                      const filteredCount = playerStats.length
                       const teamName = getTeamName(teamFilter)
                       return `${teamName}のプレイヤー: ${filteredCount}人`
                     })()}
@@ -1025,7 +871,7 @@ export default function MahjongScoreManager() {
             <CardDescription className="text-xs sm:text-sm">チーム別の通算成績（累計スコア順）</CardDescription>
           </CardHeader>
           <CardContent>
-            {gameResults.length === 0 ? (
+            {teamStats.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">成績データがありません</div>
             ) : (
               <div className="overflow-x-auto">
@@ -1036,19 +882,19 @@ export default function MahjongScoreManager() {
                       <SortableHeader sortKey="name" className="w-16 sm:w-24">
                         チーム
                       </SortableHeader>
-                      <SortableHeader sortKey="playerCount" className="text-right w-8 sm:w-12">
+                      <SortableHeader sortKey="player_count" className="text-right w-8 sm:w-12">
                         人数
                       </SortableHeader>
-                      <SortableHeader sortKey="totalScore" className="text-right w-12 sm:w-16">
+                      <SortableHeader sortKey="total_score" className="text-right w-12 sm:w-16">
                         累計
                       </SortableHeader>
-                      <SortableHeader sortKey="gameCount" className="text-right w-8 sm:w-12">
+                      <SortableHeader sortKey="game_count" className="text-right w-8 sm:w-12">
                         G数
                       </SortableHeader>
-                      <SortableHeader sortKey="averageScore" className="text-right w-12 sm:w-16">
+                      <SortableHeader sortKey="average_score" className="text-right w-12 sm:w-16">
                         平均
                       </SortableHeader>
-                      <SortableHeader sortKey="averageRank" className="text-right w-12 sm:w-16">
+                      <SortableHeader sortKey="average_rank" className="text-right w-12 sm:w-16">
                         順位
                       </SortableHeader>
                       <SortableHeader sortKey="wins" className="text-right w-6 sm:w-8">
@@ -1066,48 +912,40 @@ export default function MahjongScoreManager() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {getTeamRankingData().map((team) => {
-                      // 累計スコア順での順位を計算
-                      const allTeamStats = calculateTeamStats()
-                      const rankByTotalScore = allTeamStats.findIndex((t) => t.id === team.id) + 1
-
-                      return (
-                        <TableRow key={team.id}>
-                          <TableCell className="font-medium text-xs p-1">{rankByTotalScore}</TableCell>
-                          <TableCell className="text-xs p-1">
-                            <span
-                              className={`px-1 py-0.5 rounded text-[10px] sm:text-xs ${team.color} truncate block`}
-                              title={team.name}
-                            >
-                              {truncateName(team.name, 8)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right text-xs p-1">{team.playerCount}</TableCell>
-                          <TableCell
-                            className={`text-right font-medium text-xs p-1 ${
-                              team.totalScore > 0 ? "text-green-600" : team.totalScore < 0 ? "text-red-600" : ""
-                            }`}
+                    {getTeamRankingData().map((team, index) => (
+                      <TableRow key={team.id}>
+                        <TableCell className="font-medium text-xs p-1">{index + 1}</TableCell>
+                        <TableCell className="text-xs p-1">
+                          <span
+                            className={`px-1 py-0.5 rounded text-[10px] sm:text-xs ${team.color} truncate block`}
+                            title={team.name}
                           >
-                            {formatScore(team.totalScore)}
-                          </TableCell>
-                          <TableCell className="text-right text-xs p-1">{team.gameCount}</TableCell>
-                          <TableCell
-                            className={`text-right text-xs p-1 ${
-                              team.averageScore > 0 ? "text-green-600" : team.averageScore < 0 ? "text-red-600" : ""
-                            }`}
-                          >
-                            {formatScore(team.averageScore)}
-                          </TableCell>
-                          <TableCell className="text-right text-xs p-1">
-                            {formatAverageRank(team.averageRank)}
-                          </TableCell>
-                          <TableCell className="text-right text-xs p-1">{team.wins}</TableCell>
-                          <TableCell className="text-right text-xs p-1">{team.seconds}</TableCell>
-                          <TableCell className="text-right text-xs p-1">{team.thirds}</TableCell>
-                          <TableCell className="text-right text-xs p-1">{team.fourths}</TableCell>
-                        </TableRow>
-                      )
-                    })}
+                            {truncateName(team.name, 8)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right text-xs p-1">{team.player_count}</TableCell>
+                        <TableCell
+                          className={`text-right font-medium text-xs p-1 ${
+                            team.total_score > 0 ? "text-green-600" : team.total_score < 0 ? "text-red-600" : ""
+                          }`}
+                        >
+                          {formatScore(team.total_score)}
+                        </TableCell>
+                        <TableCell className="text-right text-xs p-1">{team.game_count}</TableCell>
+                        <TableCell
+                          className={`text-right text-xs p-1 ${
+                            team.average_score > 0 ? "text-green-600" : team.average_score < 0 ? "text-red-600" : ""
+                          }`}
+                        >
+                          {formatScore(team.average_score)}
+                        </TableCell>
+                        <TableCell className="text-right text-xs p-1">{formatAverageRank(team.average_rank)}</TableCell>
+                        <TableCell className="text-right text-xs p-1">{team.wins}</TableCell>
+                        <TableCell className="text-right text-xs p-1">{team.seconds}</TableCell>
+                        <TableCell className="text-right text-xs p-1">{team.thirds}</TableCell>
+                        <TableCell className="text-right text-xs p-1">{team.fourths}</TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
@@ -1190,12 +1028,15 @@ export default function MahjongScoreManager() {
                       <span className="truncate" title={player.name}>
                         {player.name}
                       </span>
-                      <span className={`px-2 py-1 rounded text-xs ${getTeamColor(player.teamId)} whitespace-nowrap`}>
-                        {getTeamName(player.teamId)}
+                      <span className={`px-2 py-1 rounded text-xs ${getTeamColor(player.team_id)} whitespace-nowrap`}>
+                        {getTeamName(player.team_id)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <Select value={player.teamId} onValueChange={(value) => updatePlayerTeam(player.id, value)}>
+                      <Select
+                        value={player.team_id || ""}
+                        onValueChange={(value) => updatePlayerTeam(player.id, value)}
+                      >
                         <SelectTrigger className="h-8 w-24 sm:w-32 text-xs">
                           <SelectValue placeholder="チーム変更" />
                         </SelectTrigger>
@@ -1272,10 +1113,10 @@ export default function MahjongScoreManager() {
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <span className={`px-2 py-1 rounded text-xs ${team.color} whitespace-nowrap`}>{team.name}</span>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {registeredPlayers.filter((p) => p.teamId === team.id).length}人
+                      {registeredPlayers.filter((p) => p.team_id === team.id).length}人
                     </span>
                   </div>
-                  {team.id !== "default" && (
+                  {team.id !== "00000000-0000-0000-0000-000000000001" && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -1312,7 +1153,9 @@ export default function MahjongScoreManager() {
                   <div key={result.id} className="border rounded-lg p-3 sm:p-4">
                     <div className="flex items-center justify-between mb-2 sm:mb-3">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm sm:text-base">{result.date}</h3>
+                        <h3 className="font-semibold text-sm sm:text-base">
+                          {new Date(result.game_date).toLocaleString("ja-JP")}
+                        </h3>
                       </div>
                       <Button
                         variant="outline"
@@ -1335,9 +1178,8 @@ export default function MahjongScoreManager() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {result.players.map((player, index) => {
-                            const registeredPlayer = registeredPlayers.find((p) => p.name === player.name)
-                            const teamId = registeredPlayer?.teamId || "default"
+                          {result.player_game_results?.map((playerResult: any, index: number) => {
+                            const player = playerResult.players
 
                             return (
                               <TableRow key={index}>
@@ -1347,21 +1189,21 @@ export default function MahjongScoreManager() {
                                       {truncateName(player.name, 8)}
                                     </span>
                                     <span
-                                      className={`px-1 py-0.5 rounded text-[10px] ${getTeamColor(teamId)} whitespace-nowrap`}
+                                      className={`px-1 py-0.5 rounded text-[10px] ${getTeamColor(player.team_id)} whitespace-nowrap`}
                                     >
-                                      {truncateName(getTeamName(teamId), 4)}
+                                      {truncateName(getTeamName(player.team_id), 4)}
                                     </span>
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-right text-xs p-1">
-                                  {player.points.toLocaleString()}点
+                                  {playerResult.points.toLocaleString()}点
                                 </TableCell>
                                 <TableCell
-                                  className={`text-right text-xs p-1 ${player.score > 0 ? "text-green-600" : player.score < 0 ? "text-red-600" : ""}`}
+                                  className={`text-right text-xs p-1 ${playerResult.score > 0 ? "text-green-600" : playerResult.score < 0 ? "text-red-600" : ""}`}
                                 >
-                                  {formatScore(player.score)}
+                                  {formatScore(playerResult.score)}
                                 </TableCell>
-                                <TableCell className="text-right text-xs p-1">{player.rank}位</TableCell>
+                                <TableCell className="text-right text-xs p-1">{playerResult.rank}位</TableCell>
                               </TableRow>
                             )
                           })}
