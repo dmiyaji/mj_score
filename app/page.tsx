@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -17,9 +17,32 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Trash2, Plus, UserPlus, Users, Trophy, User, Lock, History } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+// インポートに新しいアイコンを追加
+import {
+  Trash2,
+  Plus,
+  UserPlus,
+  Users,
+  Trophy,
+  User,
+  Lock,
+  History,
+  Edit,
+  Download,
+  Upload,
+  Database,
+  FileText,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { teamOperations, playerOperations, gameResultOperations, statsOperations } from "@/lib/database"
+import {
+  teamOperations,
+  playerOperations,
+  gameResultOperations,
+  statsOperations,
+  exportOperations,
+  importOperations,
+} from "@/lib/database"
 import type { Team, Player, PlayerStats, TeamStats } from "@/lib/supabase"
 
 // チームのデフォルトカラー
@@ -62,7 +85,7 @@ export default function MahjongScoreManager() {
   const { toast } = useToast()
 
   const [currentView, setCurrentView] = useState<
-    "input" | "playerRanking" | "teamRanking" | "playerManagement" | "teamManagement" | "gameHistory"
+    "input" | "playerRanking" | "teamRanking" | "playerManagement" | "teamManagement" | "gameHistory" | "dataManagement"
   >("input")
   const [sortConfig, setSortConfig] = useState<{
     key: string
@@ -75,6 +98,18 @@ export default function MahjongScoreManager() {
   const [passwordInput, setPasswordInput] = useState("")
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
   const [pendingView, setPendingView] = useState<string>("")
+
+  // 編集関連の状態
+  const [editingPlayer, setEditingPlayer] = useState<{ id: string; name: string } | null>(null)
+  const [editingTeam, setEditingTeam] = useState<{ id: string; name: string; color: string } | null>(null)
+
+  // インポート・エクスポート関連の状態を追加
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [selectedTable, setSelectedTable] = useState<"teams" | "players" | "gameResults">("teams")
+  const [importData, setImportData] = useState("")
+  const [importFormat, setImportFormat] = useState<"csv" | "json">("csv")
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // データ読み込み
   const loadData = async () => {
@@ -130,7 +165,7 @@ export default function MahjongScoreManager() {
 
   // パスワード認証が必要な画面かチェック
   const requiresAuth = (view: string) => {
-    return ["playerManagement", "teamManagement", "gameHistory"].includes(view)
+    return ["playerManagement", "teamManagement", "gameHistory", "dataManagement"].includes(view)
   }
 
   // パスワード認証処理
@@ -162,6 +197,155 @@ export default function MahjongScoreManager() {
     } else {
       setCurrentView(value as any)
     }
+  }
+
+  // エクスポート関数を追加
+  const handleExport = async (format: "csv" | "json") => {
+    try {
+      setLoading(true)
+
+      if (format === "json") {
+        // JSON形式でエクスポート
+        const data = await exportOperations.exportAllData()
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `mahjong_data_${new Date().toISOString().split("T")[0]}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else {
+        // CSV形式でエクスポート
+        const csv = await exportOperations.exportToCSV(selectedTable)
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${selectedTable}_${new Date().toISOString().split("T")[0]}.csv`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
+
+      toast({
+        title: "エクスポート完了",
+        description: `${format.toUpperCase()}ファイルをダウンロードしました`,
+      })
+      setIsExportDialogOpen(false)
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "エクスポートに失敗しました",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // インポート関数を追加
+  const handleImport = async () => {
+    try {
+      setLoading(true)
+
+      if (!importData.trim()) {
+        toast({
+          title: "エラー",
+          description: "インポートするデータを入力してください",
+          variant: "destructive",
+        })
+        return
+      }
+
+      let parsedData
+
+      if (importFormat === "json") {
+        // JSON形式のインポート
+        try {
+          parsedData = JSON.parse(importData)
+        } catch (error) {
+          throw new Error("無効なJSON形式です")
+        }
+
+        // JSONの場合は全データをインポート
+        if (parsedData.teams) {
+          await importOperations.importTeams(
+            parsedData.teams.map((t: any) => ({
+              name: t.name,
+              color: t.color,
+            })),
+          )
+        }
+
+        if (parsedData.players) {
+          await importOperations.importPlayers(
+            parsedData.players.map((p: any) => ({
+              name: p.name,
+              team_name: p.teams?.name || "未所属",
+            })),
+          )
+        }
+
+        if (parsedData.gameResults) {
+          await importOperations.importGameResults(parsedData.gameResults)
+        }
+      } else {
+        // CSV形式のインポート
+        parsedData = importOperations.parseCSV(importData, selectedTable)
+
+        switch (selectedTable) {
+          case "teams":
+            await importOperations.importTeams(parsedData)
+            break
+          case "players":
+            await importOperations.importPlayers(parsedData)
+            break
+          case "gameResults":
+            await importOperations.importGameResults(parsedData)
+            break
+        }
+      }
+
+      await loadData()
+      setImportData("")
+      setIsImportDialogOpen(false)
+
+      toast({
+        title: "インポート完了",
+        description: "データを正常にインポートしました",
+      })
+    } catch (error: any) {
+      toast({
+        title: "エラー",
+        description: error.message || "インポートに失敗しました",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ファイル選択処理を追加
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const content = e.target?.result as string
+      setImportData(content)
+
+      // ファイル拡張子から形式を自動判定
+      if (file.name.endsWith(".json")) {
+        setImportFormat("json")
+      } else if (file.name.endsWith(".csv")) {
+        setImportFormat("csv")
+      }
+    }
+    reader.readAsText(file)
   }
 
   // ソート機能
@@ -230,7 +414,7 @@ export default function MahjongScoreManager() {
   }
 
   // プレイヤー名の更新
-  const updatePlayerName = (index: number, name: string) => {
+  const updatePlayerNameInput = (index: number, name: string) => {
     const newPlayers = [...players]
     newPlayers[index].name = name
     setPlayers(newPlayers)
@@ -285,6 +469,43 @@ export default function MahjongScoreManager() {
     }
   }
 
+  // プレイヤー名更新関数
+  const updatePlayerName = async (id: string, newName: string) => {
+    if (newName.trim() === "") {
+      toast({
+        title: "エラー",
+        description: "プレイヤー名を入力してください",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (registeredPlayers.some((player) => player.name === newName.trim() && player.id !== id)) {
+      toast({
+        title: "エラー",
+        description: "同じ名前のプレイヤーが既に存在します",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      await playerOperations.update(id, { name: newName.trim() })
+      await loadData()
+      setEditingPlayer(null)
+      toast({
+        title: "更新完了",
+        description: "プレイヤー名を変更しました",
+      })
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "プレイヤー名の変更に失敗しました",
+        variant: "destructive",
+      })
+    }
+  }
+
   // 新しいチームを登録
   const addNewTeam = async () => {
     if (newTeamName.trim() === "") {
@@ -321,6 +542,47 @@ export default function MahjongScoreManager() {
       toast({
         title: "エラー",
         description: "チームの登録に失敗しました",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // チーム更新関数
+  const updateTeam = async (id: string, updates: { name?: string; color?: string }) => {
+    if (updates.name !== undefined && updates.name.trim() === "") {
+      toast({
+        title: "エラー",
+        description: "チーム名を入力してください",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (updates.name && teams.some((team) => team.name === updates.name.trim() && team.id !== id)) {
+      toast({
+        title: "エラー",
+        description: "同じ名前のチームが既に存在します",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const updateData: any = {}
+      if (updates.name !== undefined) updateData.name = updates.name.trim()
+      if (updates.color !== undefined) updateData.color = updates.color
+
+      await teamOperations.update(id, updateData)
+      await loadData()
+      setEditingTeam(null)
+      toast({
+        title: "更新完了",
+        description: "チーム情報を変更しました",
+      })
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "チーム情報の変更に失敗しました",
         variant: "destructive",
       })
     }
@@ -445,7 +707,7 @@ export default function MahjongScoreManager() {
     if (hasEmptyNames) {
       toast({
         title: "エラー",
-        description: "すべてのプレイヤーを選択してください",
+        description: "すべてのプレイヤーを選択してくだ��い",
         variant: "destructive",
       })
       return
@@ -584,7 +846,7 @@ export default function MahjongScoreManager() {
 
         <div className="w-full overflow-x-auto">
           <Tabs value={currentView} onValueChange={handleTabChange}>
-            <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full min-w-[600px] sm:min-w-0">
+            <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full min-w-[700px] sm:min-w-0">
               <TabsTrigger value="input" className="text-xs sm:text-sm px-1 sm:px-3">
                 成績入力
               </TabsTrigger>
@@ -615,6 +877,14 @@ export default function MahjongScoreManager() {
                   <History className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">過去の成績</span>
                   <span className="sm:hidden">履歴</span>
+                  <Lock className="w-2 h-2 sm:w-3 sm:h-3" />
+                </div>
+              </TabsTrigger>
+              <TabsTrigger value="dataManagement" className="text-xs sm:text-sm px-1 sm:px-3">
+                <div className="flex items-center gap-1">
+                  <Database className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">データ管理</span>
+                  <span className="sm:hidden">DB</span>
                   <Lock className="w-2 h-2 sm:w-3 sm:h-3" />
                 </div>
               </TabsTrigger>
@@ -657,6 +927,158 @@ export default function MahjongScoreManager() {
         </DialogContent>
       </Dialog>
 
+      {/* エクスポートダイアログを追加 */}
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="w-[90vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg">データエクスポート</DialogTitle>
+            <DialogDescription className="text-sm">エクスポートする形式とテーブルを選択してください</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm">エクスポート形式</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleExport("csv")}
+                  className="flex-1 text-sm"
+                  disabled={loading}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleExport("json")}
+                  className="flex-1 text-sm"
+                  disabled={loading}
+                >
+                  <Database className="w-4 h-4 mr-2" />
+                  JSON (全データ)
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="export-table" className="text-sm">
+                CSVエクスポート対象テーブル
+              </Label>
+              <Select value={selectedTable} onValueChange={(value: any) => setSelectedTable(value)}>
+                <SelectTrigger id="export-table" className="text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="teams" className="text-sm">
+                    チーム
+                  </SelectItem>
+                  <SelectItem value="players" className="text-sm">
+                    プレイヤー
+                  </SelectItem>
+                  <SelectItem value="gameResults" className="text-sm">
+                    ゲーム結果
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 text-sm">
+                キャンセル
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* インポートダイアログを追加 */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="w-[90vw] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg">データインポート</DialogTitle>
+            <DialogDescription className="text-sm">
+              CSVまたはJSONファイルからデータをインポートできます
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm">インポート形式</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant={importFormat === "csv" ? "default" : "outline"}
+                  onClick={() => setImportFormat("csv")}
+                  className="text-sm"
+                >
+                  CSV
+                </Button>
+                <Button
+                  variant={importFormat === "json" ? "default" : "outline"}
+                  onClick={() => setImportFormat("json")}
+                  className="text-sm"
+                >
+                  JSON
+                </Button>
+              </div>
+            </div>
+
+            {importFormat === "csv" && (
+              <div className="space-y-2">
+                <Label htmlFor="import-table" className="text-sm">
+                  インポート対象テーブル
+                </Label>
+                <Select value={selectedTable} onValueChange={(value: any) => setSelectedTable(value)}>
+                  <SelectTrigger id="import-table" className="text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="teams" className="text-sm">
+                      チーム
+                    </SelectItem>
+                    <SelectItem value="players" className="text-sm">
+                      プレイヤー
+                    </SelectItem>
+                    <SelectItem value="gameResults" className="text-sm">
+                      ゲーム結果
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label className="text-sm">ファイル選択</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.json"
+                onChange={handleFileSelect}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="import-data" className="text-sm">
+                データ ({importFormat.toUpperCase()})
+              </Label>
+              <Textarea
+                id="import-data"
+                placeholder={`${importFormat.toUpperCase()}データを貼り付けるか、上記でファイルを選択してください`}
+                value={importData}
+                onChange={(e) => setImportData(e.target.value)}
+                className="text-sm h-32"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={handleImport} className="flex-1 text-sm" disabled={loading || !importData.trim()}>
+                <Upload className="w-4 h-4 mr-2" />
+                インポート
+              </Button>
+              <Button variant="outline" onClick={() => setIsImportDialogOpen(false)} className="text-sm">
+                キャンセル
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {currentView === "input" && (
         <div>
           {/* 成績入力フォーム */}
@@ -671,26 +1093,32 @@ export default function MahjongScoreManager() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-6">
+              {/* 選択されたプレイヤー表示 */}
               <div className="space-y-2 sm:space-y-4">
                 {players.map((player, index) => (
                   <div key={index} className="space-y-1 sm:space-y-2">
                     <div className="flex gap-2">
-                      <Select value={player.name} onValueChange={(value) => updatePlayerName(index, value)}>
-                        <SelectTrigger className="flex-1 text-xs sm:text-sm h-8 sm:h-10">
-                          <SelectValue placeholder="プレイヤーを選択" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {registeredPlayers.map((registeredPlayer) => (
-                            <SelectItem
-                              key={registeredPlayer.id}
-                              value={registeredPlayer.name}
-                              className="text-xs sm:text-sm"
-                            >
-                              {registeredPlayer.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 p-2 border rounded min-h-[32px] sm:min-h-[40px]">
+                          {player.name ? (
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-xs sm:text-sm font-medium">{player.name}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => updatePlayerNameInput(index, "")}
+                                className="h-6 w-6 p-0 text-gray-500 hover:text-red-600"
+                              >
+                                ×
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs sm:text-sm text-muted-foreground">
+                              プレイヤー{index + 1}を選択
+                            </span>
+                          )}
+                        </div>
+                      </div>
                       <Input
                         type="number"
                         placeholder="持ち点"
@@ -703,6 +1131,75 @@ export default function MahjongScoreManager() {
                 ))}
               </div>
 
+              {/* プレイヤー選択エリア */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">プレイヤーを選択</Label>
+
+                {/* チーム別プレイヤー表示 */}
+                <div className="space-y-3">
+                  {teams.map((team) => {
+                    const teamPlayers = registeredPlayers.filter((p) => p.team_id === team.id)
+                    if (teamPlayers.length === 0) return null
+
+                    return (
+                      <div key={team.id} className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs ${team.color} font-medium`}>{team.name}</span>
+                          <span className="text-xs text-muted-foreground">({teamPlayers.length}人)</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                          {teamPlayers.map((teamPlayer) => {
+                            const isSelected = players.some((p) => p.name === teamPlayer.name)
+                            const availableSlot = players.findIndex((p) => p.name === "")
+                            const canSelect = !isSelected && availableSlot !== -1
+
+                            return (
+                              <Button
+                                key={teamPlayer.id}
+                                variant={isSelected ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => {
+                                  if (isSelected) {
+                                    // 選択解除
+                                    const selectedIndex = players.findIndex((p) => p.name === teamPlayer.name)
+                                    if (selectedIndex !== -1) {
+                                      updatePlayerNameInput(selectedIndex, "")
+                                    }
+                                  } else if (canSelect) {
+                                    // 選択
+                                    updatePlayerNameInput(availableSlot, teamPlayer.name)
+                                  }
+                                }}
+                                disabled={!isSelected && !canSelect}
+                                className={`text-xs h-8 justify-start ${
+                                  isSelected
+                                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                                    : canSelect
+                                      ? "hover:bg-gray-50"
+                                      : "opacity-50 cursor-not-allowed"
+                                }`}
+                              >
+                                <div className="flex items-center gap-1 w-full">
+                                  {isSelected && <span className="text-xs">✓</span>}
+                                  <span className="truncate" title={teamPlayer.name}>
+                                    {teamPlayer.name}
+                                  </span>
+                                </div>
+                              </Button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* 選択状況表示 */}
+                <div className="text-xs text-muted-foreground">
+                  選択済み: {players.filter((p) => p.name !== "").length}/4人
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <div className="text-xs sm:text-sm">
                   <span className="text-muted-foreground">持ち点合計: </span>
@@ -712,7 +1209,7 @@ export default function MahjongScoreManager() {
                 </div>
                 <Button
                   onClick={saveGameResult}
-                  disabled={currentTotal !== 100000}
+                  disabled={currentTotal !== 100000 || players.some((p) => p.name === "")}
                   className="text-xs sm:text-sm h-8 sm:h-10"
                 >
                   成績を保存
@@ -917,7 +1414,7 @@ export default function MahjongScoreManager() {
                         <TableCell className="font-medium text-xs p-1">{index + 1}</TableCell>
                         <TableCell className="text-xs p-1">
                           <span
-                            className={`px-1 py-0.5 rounded text-[10px] sm:text-xs ${team.color} truncate block`}
+                            className={`px-1 py-0.5 rounded text-xs ${team.color} truncate block`}
                             title={team.name}
                           >
                             {truncateName(team.name, 8)}
@@ -1025,9 +1522,52 @@ export default function MahjongScoreManager() {
                 {registeredPlayers.map((player) => (
                   <div key={player.id} className="flex items-center justify-between p-2 border rounded text-sm">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="truncate" title={player.name}>
-                        {player.name}
-                      </span>
+                      {editingPlayer?.id === player.id ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <Input
+                            value={editingPlayer.name}
+                            onChange={(e) => setEditingPlayer({ ...editingPlayer, name: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                updatePlayerName(player.id, editingPlayer.name)
+                              } else if (e.key === "Escape") {
+                                setEditingPlayer(null)
+                              }
+                            }}
+                            className="text-sm h-8 flex-1"
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => updatePlayerName(player.id, editingPlayer.name)}
+                            className="h-8 px-2 text-xs"
+                          >
+                            保存
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingPlayer(null)}
+                            className="h-8 px-2 text-xs"
+                          >
+                            キャンセル
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="truncate" title={player.name}>
+                            {player.name}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingPlayer({ id: player.id, name: player.name })}
+                            className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
                       <span className={`px-2 py-1 rounded text-xs ${getTeamColor(player.team_id)} whitespace-nowrap`}>
                         {getTeamName(player.team_id)}
                       </span>
@@ -1111,12 +1651,74 @@ export default function MahjongScoreManager() {
               {teams.map((team) => (
                 <div key={team.id} className="flex items-center justify-between p-2 border rounded text-sm">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className={`px-2 py-1 rounded text-xs ${team.color} whitespace-nowrap`}>{team.name}</span>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {registeredPlayers.filter((p) => p.team_id === team.id).length}人
-                    </span>
+                    {editingTeam?.id === team.id ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Input
+                          value={editingTeam.name}
+                          onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              updateTeam(team.id, { name: editingTeam.name })
+                            } else if (e.key === "Escape") {
+                              setEditingTeam(null)
+                            }
+                          }}
+                          className="text-sm h-8 flex-1"
+                          autoFocus
+                        />
+                        <Select
+                          value={editingTeam.color}
+                          onValueChange={(value) => setEditingTeam({ ...editingTeam, color: value })}
+                        >
+                          <SelectTrigger className="h-8 w-32 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TEAM_COLORS.map((color, index) => (
+                              <SelectItem key={index} value={color} className="text-xs">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded ${color}`} />
+                                  <span>カラー {index + 1}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          onClick={() => updateTeam(team.id, { name: editingTeam.name, color: editingTeam.color })}
+                          className="h-8 px-2 text-xs"
+                        >
+                          保存
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingTeam(null)}
+                          className="h-8 px-2 text-xs"
+                        >
+                          キャンセル
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className={`px-2 py-1 rounded text-xs ${team.color} whitespace-nowrap`}>{team.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingTeam({ id: team.id, name: team.name, color: team.color })}
+                          className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                          disabled={team.id === "00000000-0000-0000-0000-000000000001"}
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {registeredPlayers.filter((p) => p.team_id === team.id).length}人
+                        </span>
+                      </>
+                    )}
                   </div>
-                  {team.id !== "00000000-0000-0000-0000-000000000001" && (
+                  {team.id !== "00000000-0000-0000-0000-000000000001" && !editingTeam && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -1214,6 +1816,165 @@ export default function MahjongScoreManager() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {currentView === "dataManagement" && (
+        <Card>
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Database className="w-4 h-4 sm:w-5 sm:h-5" />
+              データ管理
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">データのインポート・エクスポート機能</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* エクスポート */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Download className="w-4 h-4" />
+                    データエクスポート
+                  </CardTitle>
+                  <CardDescription className="text-xs">データをファイルとしてダウンロード</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">テーブル選択 (CSV用)</Label>
+                    <Select value={selectedTable} onValueChange={(value: any) => setSelectedTable(value)}>
+                      <SelectTrigger className="text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="teams" className="text-sm">
+                          チーム
+                        </SelectItem>
+                        <SelectItem value="players" className="text-sm">
+                          プレイヤー
+                        </SelectItem>
+                        <SelectItem value="gameResults" className="text-sm">
+                          ゲーム結果
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Button onClick={() => setIsExportDialogOpen(true)} className="w-full text-sm" disabled={loading}>
+                      <Download className="w-4 h-4 mr-2" />
+                      エクスポート
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* インポート */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Upload className="w-4 h-4" />
+                    データインポート
+                  </CardTitle>
+                  <CardDescription className="text-xs">ファイルからデータを取り込み</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">形式選択</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={importFormat === "csv" ? "default" : "outline"}
+                        onClick={() => setImportFormat("csv")}
+                        className="flex-1 text-xs"
+                      >
+                        CSV
+                      </Button>
+                      <Button
+                        variant={importFormat === "json" ? "default" : "outline"}
+                        onClick={() => setImportFormat("json")}
+                        className="flex-1 text-xs"
+                      >
+                        JSON
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Button onClick={() => setIsImportDialogOpen(true)} className="w-full text-sm" disabled={loading}>
+                      <Upload className="w-4 h-4 mr-2" />
+                      インポート
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* データ統計 */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="w-4 h-4" />
+                  データ統計
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                  <div className="space-y-1">
+                    <div className="text-2xl font-bold text-blue-600">{teams.length}</div>
+                    <div className="text-xs text-muted-foreground">チーム</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-2xl font-bold text-green-600">{registeredPlayers.length}</div>
+                    <div className="text-xs text-muted-foreground">プレイヤー</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-2xl font-bold text-purple-600">{gameResults.length}</div>
+                    <div className="text-xs text-muted-foreground">ゲーム</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {gameResults.reduce((total, game) => total + (game.player_game_results?.length || 0), 0)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">成績記録</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* CSVフォーマット例 */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">CSVフォーマット例</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">チーム (teams.csv)</Label>
+                  <div className="bg-gray-50 p-2 rounded text-xs font-mono">
+                    name,color
+                    <br />
+                    チーム赤龍,bg-red-100 text-red-800
+                    <br />
+                    チーム青天,bg-blue-100 text-blue-800
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">プレイヤー (players.csv)</Label>
+                  <div className="bg-gray-50 p-2 rounded text-xs font-mono">
+                    name,team_name
+                    <br />
+                    田中太郎,チーム赤龍
+                    <br />
+                    佐藤花子,チーム青天
+                    <br />
+                    山田次郎
+                    <br />
+                    鈴木三郎,
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    ※ team_name列は省略可能です。未指定の場合は「未所属」チームに登録されます。
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </CardContent>
         </Card>
       )}
