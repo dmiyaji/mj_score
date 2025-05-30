@@ -803,15 +803,31 @@ export default function MahjongScoreManager() {
 
   // プレイヤーランキングのデータを取得
   const getPlayerRankingData = () => {
+    // 累計スコア順で順位を計算（固定順位）
+    const rankedData = [...playerStats]
+      .sort((a, b) => b.total_score - a.total_score)
+      .map((player, index) => ({
+        ...player,
+        fixed_rank: index + 1,
+      }))
+
     // ソートを適用
-    const sortedData = sortConfig ? sortData(playerStats, sortConfig.key, sortConfig.direction) : playerStats
+    const sortedData = sortConfig ? sortData(rankedData, sortConfig.key, sortConfig.direction) : rankedData
     return sortedData
   }
 
-  // チームランキングのデータを取得
+  // チームランキングのデータを取得する関数を修正
   const getTeamRankingData = () => {
+    // 累計スコア順で順位を計算（固定順位）
+    const rankedData = [...teamStats]
+      .sort((a, b) => b.total_score - a.total_score)
+      .map((team, index) => ({
+        ...team,
+        fixed_rank: index + 1,
+      }))
+
     // ソートを適用
-    const sortedData = sortConfig ? sortData(teamStats, sortConfig.key, sortConfig.direction) : teamStats
+    const sortedData = sortConfig ? sortData(rankedData, sortConfig.key, sortConfig.direction) : rankedData
     return sortedData
   }
 
@@ -1296,9 +1312,9 @@ export default function MahjongScoreManager() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {getPlayerRankingData().map((player, index) => (
+                      {getPlayerRankingData().map((player) => (
                         <TableRow key={player.id}>
-                          <TableCell className="font-medium text-xs p-1">{index + 1}</TableCell>
+                          <TableCell className="font-medium text-xs p-1">{player.fixed_rank}</TableCell>
                           <TableCell className="font-medium text-xs p-1">
                             <span className="truncate block" title={player.name}>
                               {truncateName(player.name, 8)}
@@ -1381,9 +1397,6 @@ export default function MahjongScoreManager() {
                       <SortableHeader sortKey="name" className="w-16 sm:w-24">
                         チーム
                       </SortableHeader>
-                      <SortableHeader sortKey="player_count" className="text-right w-8 sm:w-12">
-                        人数
-                      </SortableHeader>
                       <SortableHeader sortKey="total_score" className="text-right w-12 sm:w-16">
                         累計
                       </SortableHeader>
@@ -1411,9 +1424,9 @@ export default function MahjongScoreManager() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {getTeamRankingData().map((team, index) => (
+                    {getTeamRankingData().map((team) => (
                       <TableRow key={team.id}>
-                        <TableCell className="font-medium text-xs p-1">{index + 1}</TableCell>
+                        <TableCell className="font-medium text-xs p-1">{team.fixed_rank}</TableCell>
                         <TableCell className="text-xs p-1">
                           <span
                             className={`px-1 py-0.5 rounded text-xs ${team.color} truncate block`}
@@ -1422,7 +1435,6 @@ export default function MahjongScoreManager() {
                             {truncateName(team.name, 8)}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right text-xs p-1">{team.player_count}</TableCell>
                         <TableCell
                           className={`text-right font-medium text-xs p-1 ${
                             team.total_score > 0 ? "text-green-600" : team.total_score < 0 ? "text-red-600" : ""
