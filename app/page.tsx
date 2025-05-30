@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +17,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Trash2, Plus, UserPlus, Settings } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Trash2, Plus, UserPlus, Users, Trophy, User, Lock, History } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface GameResult {
@@ -29,10 +32,31 @@ interface GameResult {
   }[]
 }
 
+interface Team {
+  id: string
+  name: string
+  color: string
+}
+
 interface Player {
   id: string
   name: string
+  teamId: string
 }
+
+// チームのデフォルトカラー
+const TEAM_COLORS = [
+  "bg-red-100 text-red-800",
+  "bg-blue-100 text-blue-800",
+  "bg-green-100 text-green-800",
+  "bg-yellow-100 text-yellow-800",
+  "bg-purple-100 text-purple-800",
+  "bg-pink-100 text-pink-800",
+  "bg-indigo-100 text-indigo-800",
+  "bg-orange-100 text-orange-800",
+]
+
+const ADMIN_PASSWORD = "nine"
 
 export default function MahjongScoreManager() {
   const [players, setPlayers] = useState([
@@ -43,21 +67,242 @@ export default function MahjongScoreManager() {
   ])
   const [gameResults, setGameResults] = useState<GameResult[]>([])
   const [registeredPlayers, setRegisteredPlayers] = useState<Player[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
   const [newPlayerName, setNewPlayerName] = useState("")
+  const [newPlayerTeamId, setNewPlayerTeamId] = useState("")
+  const [newTeamName, setNewTeamName] = useState("")
   const [isPlayerDialogOpen, setIsPlayerDialogOpen] = useState(false)
+  const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false)
   const { toast } = useToast()
-  const [currentView, setCurrentView] = useState<"input" | "ranking">("input")
+  const [currentView, setCurrentView] = useState<
+    "input" | "playerRanking" | "teamRanking" | "playerManagement" | "teamManagement" | "gameHistory"
+  >("input")
+  const [sortConfig, setSortConfig] = useState<{
+    key: string
+    direction: "asc" | "desc"
+  } | null>(null)
+  const [teamFilter, setTeamFilter] = useState<string>("all")
+
+  // パスワード認証関連
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [passwordInput, setPasswordInput] = useState("")
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
+  const [pendingView, setPendingView] = useState<string>("")
+
+  // パスワード認証が必要な画面かチェック
+  const requiresAuth = (view: string) => {
+    return ["playerManagement", "teamManagement", "gameHistory"].includes(view)
+  }
+
+  // パスワード認証処理
+  const handlePasswordSubmit = () => {
+    if (passwordInput === ADMIN_PASSWORD) {
+      setIsAuthenticated(true)
+      setIsPasswordDialogOpen(false)
+      setCurrentView(pendingView as any)
+      setPasswordInput("")
+      toast({
+        title: "認証成功",
+        description: "管理画面にアクセスできます",
+      })
+    } else {
+      toast({
+        title: "認証失敗",
+        description: "パスワードが正しくありません",
+        variant: "destructive",
+      })
+      setPasswordInput("")
+    }
+  }
+
+  // タブ変更時の認証チェック
+  const handleTabChange = (value: string) => {
+    if (requiresAuth(value) && !isAuthenticated) {
+      setPendingView(value)
+      setIsPasswordDialogOpen(true)
+    } else {
+      setCurrentView(value as any)
+    }
+  }
+
+  // ソート機能
+  const handleSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc"
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc"
+    }
+    setSortConfig({ key, direction })
+  }
+
+  // データをソートする関数
+  const sortData = (data: any[], key: string, direction: "asc" | "desc") => {
+    return [...data].sort((a, b) => {
+      const aValue = a[key]
+      const bValue = b[key]
+
+      // 数値の場合
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return direction === "asc" ? aValue - bValue : bValue - aValue
+      }
+
+      // 文字列の場合
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return direction === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
+      }
+
+      return 0
+    })
+  }
+
+  // ソート可能なヘッダーコンポーネント
+  const SortableHeader = ({
+    children,
+    sortKey,
+    className = "",
+  }: {
+    children: React.ReactNode
+    sortKey: string
+    className?: string
+  }) => {
+    const isActive = sortConfig?.key === sortKey
+    const direction = isActive ? sortConfig.direction : null
+
+    return (
+      <TableHead
+        className={`cursor-pointer hover:bg-gray-50 select-none ${className}`}
+        onClick={() => handleSort(sortKey)}
+      >
+        <div className="flex items-center gap-1">
+          {children}
+          <div className="flex flex-col">
+            <div
+              className={`w-0 h-0 border-l-2 border-r-2 border-b-2 border-transparent ${
+                direction === "asc" ? "border-b-gray-600" : "border-b-gray-300"
+              }`}
+              style={{ borderBottomWidth: "4px", marginBottom: "1px" }}
+            />
+            <div
+              className={`w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent ${
+                direction === "desc" ? "border-t-gray-600" : "border-t-gray-300"
+              }`}
+              style={{ borderTopWidth: "4px" }}
+            />
+          </div>
+        </div>
+      </TableHead>
+    )
+  }
 
   // ローカルストレージから成績とプレイヤーを読み込み
   useEffect(() => {
     const savedResults = localStorage.getItem("mahjong-results")
-    if (savedResults) {
-      setGameResults(JSON.parse(savedResults))
+    const savedPlayers = localStorage.getItem("mahjong-players")
+    const savedTeams = localStorage.getItem("mahjong-teams")
+
+    // テスト用チームデータ
+    const testTeams: Team[] = [
+      { id: "default", name: "未所属", color: "bg-gray-100 text-gray-800" },
+      { id: "team1", name: "チーム赤龍", color: "bg-red-100 text-red-800" },
+      { id: "team2", name: "チーム青天", color: "bg-blue-100 text-blue-800" },
+      { id: "team3", name: "チーム緑風", color: "bg-green-100 text-green-800" },
+    ]
+
+    // テスト用プレイヤーデータ
+    const testPlayers: Player[] = [
+      { id: "p1", name: "田中太郎", teamId: "team1" },
+      { id: "p2", name: "佐藤花子", teamId: "team1" },
+      { id: "p3", name: "鈴木一郎", teamId: "team2" },
+      { id: "p4", name: "高橋美咲", teamId: "team2" },
+      { id: "p5", name: "伊藤健太", teamId: "team3" },
+      { id: "p6", name: "渡辺由美", teamId: "team3" },
+      { id: "p7", name: "山田次郎", teamId: "default" },
+      { id: "p8", name: "中村愛", teamId: "default" },
+    ]
+
+    // テスト用ゲーム結果データ
+    const testGameResults: GameResult[] = [
+      {
+        id: "g1",
+        date: "2024/01/15 19:30:00",
+        players: [
+          { name: "田中太郎", points: 35000, score: 35.0, rank: 1 },
+          { name: "鈴木一郎", points: 28000, score: 8.0, rank: 2 },
+          { name: "伊藤健太", points: 22000, score: -18.0, rank: 3 },
+          { name: "山田次郎", points: 15000, score: -25.0, rank: 4 },
+        ],
+      },
+      {
+        id: "g2",
+        date: "2024/01/14 20:15:00",
+        players: [
+          { name: "佐藤花子", points: 42000, score: 62.0, rank: 1 },
+          { name: "高橋美咲", points: 25000, score: 5.0, rank: 2 },
+          { name: "渡辺由美", points: 20000, score: -20.0, rank: 3 },
+          { name: "中村愛", points: 13000, score: -47.0, rank: 4 },
+        ],
+      },
+      {
+        id: "g3",
+        date: "2024/01/13 18:45:00",
+        players: [
+          { name: "鈴木一郎", points: 38000, score: 48.0, rank: 1 },
+          { name: "田中太郎", points: 27000, score: 7.0, rank: 2 },
+          { name: "渡辺由美", points: 21000, score: -19.0, rank: 3 },
+          { name: "佐藤花子", points: 14000, score: -36.0, rank: 4 },
+        ],
+      },
+      {
+        id: "g4",
+        date: "2024/01/12 21:00:00",
+        players: [
+          { name: "伊藤健太", points: 33000, score: 23.0, rank: 1 },
+          { name: "山田次郎", points: 29000, score: 9.0, rank: 2 },
+          { name: "高橋美咲", points: 24000, score: -16.0, rank: 3 },
+          { name: "中村愛", points: 14000, score: -16.0, rank: 3 },
+        ],
+      },
+      {
+        id: "g5",
+        date: "2024/01/11 19:20:00",
+        players: [
+          { name: "渡辺由美", points: 41000, score: 61.0, rank: 1 },
+          { name: "田中太郎", points: 26000, score: 6.0, rank: 2 },
+          { name: "鈴木一郎", points: 19000, score: -21.0, rank: 3 },
+          { name: "伊藤健太", points: 14000, score: -46.0, rank: 4 },
+        ],
+      },
+      {
+        id: "g6",
+        date: "2024/01/10 20:30:00",
+        players: [
+          { name: "高橋美咲", points: 36000, score: 36.0, rank: 1 },
+          { name: "中村愛", points: 28000, score: 8.0, rank: 2 },
+          { name: "佐藤花子", points: 23000, score: -17.0, rank: 3 },
+          { name: "山田次郎", points: 13000, score: -27.0, rank: 4 },
+        ],
+      },
+    ]
+
+    // データが存在しない場合はテストデータを使用
+    if (!savedTeams) {
+      setTeams(testTeams)
+      localStorage.setItem("mahjong-teams", JSON.stringify(testTeams))
+    } else {
+      setTeams(JSON.parse(savedTeams))
     }
 
-    const savedPlayers = localStorage.getItem("mahjong-players")
-    if (savedPlayers) {
+    if (!savedPlayers) {
+      setRegisteredPlayers(testPlayers)
+      localStorage.setItem("mahjong-players", JSON.stringify(testPlayers))
+    } else {
       setRegisteredPlayers(JSON.parse(savedPlayers))
+    }
+
+    if (!savedResults) {
+      setGameResults(testGameResults)
+      localStorage.setItem("mahjong-results", JSON.stringify(testGameResults))
+    } else {
+      setGameResults(JSON.parse(savedResults))
     }
   }, [])
 
@@ -95,20 +340,65 @@ export default function MahjongScoreManager() {
       return
     }
 
+    const teamId = newPlayerTeamId || (teams.length > 0 ? teams[0].id : "default")
+
     const newPlayer: Player = {
       id: Date.now().toString(),
       name: newPlayerName.trim(),
+      teamId: teamId,
     }
 
     const updatedPlayers = [...registeredPlayers, newPlayer]
     setRegisteredPlayers(updatedPlayers)
     localStorage.setItem("mahjong-players", JSON.stringify(updatedPlayers))
     setNewPlayerName("")
+    setNewPlayerTeamId("")
     setIsPlayerDialogOpen(false)
 
     toast({
       title: "登録完了",
       description: `${newPlayer.name}を登録しました`,
+    })
+  }
+
+  // 新しいチームを登録
+  const addNewTeam = () => {
+    if (newTeamName.trim() === "") {
+      toast({
+        title: "エラー",
+        description: "チーム名を入力してください",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (teams.some((team) => team.name === newTeamName.trim())) {
+      toast({
+        title: "エラー",
+        description: "同じ名前のチームが既に存在します",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // ランダムにチームカラーを選択
+    const randomColor = TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)]
+
+    const newTeam: Team = {
+      id: Date.now().toString(),
+      name: newTeamName.trim(),
+      color: randomColor,
+    }
+
+    const updatedTeams = [...teams, newTeam]
+    setTeams(updatedTeams)
+    localStorage.setItem("mahjong-teams", JSON.stringify(updatedTeams))
+    setNewTeamName("")
+    setIsTeamDialogOpen(false)
+
+    toast({
+      title: "登録完了",
+      description: `チーム「${newTeam.name}」を登録しました`,
     })
   }
 
@@ -121,6 +411,56 @@ export default function MahjongScoreManager() {
     toast({
       title: "削除完了",
       description: "プレイヤーを削除しました",
+    })
+  }
+
+  // チームを削除
+  const deleteTeam = (id: string) => {
+    // デフォルトチームは削除不可
+    if (id === "default") {
+      toast({
+        title: "エラー",
+        description: "未所属チームは削除できません",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // このチームに所属するプレイヤーを未所属に変更
+    const updatedPlayers = registeredPlayers.map((player) => {
+      if (player.teamId === id) {
+        return { ...player, teamId: "default" }
+      }
+      return player
+    })
+    setRegisteredPlayers(updatedPlayers)
+    localStorage.setItem("mahjong-players", JSON.stringify(updatedPlayers))
+
+    // チームを削除
+    const updatedTeams = teams.filter((team) => team.id !== id)
+    setTeams(updatedTeams)
+    localStorage.setItem("mahjong-teams", JSON.stringify(updatedTeams))
+
+    toast({
+      title: "削除完了",
+      description: "チームを削除しました",
+    })
+  }
+
+  // プレイヤーのチームを変更
+  const updatePlayerTeam = (playerId: string, teamId: string) => {
+    const updatedPlayers = registeredPlayers.map((player) => {
+      if (player.id === playerId) {
+        return { ...player, teamId }
+      }
+      return player
+    })
+    setRegisteredPlayers(updatedPlayers)
+    localStorage.setItem("mahjong-players", JSON.stringify(updatedPlayers))
+
+    toast({
+      title: "更新完了",
+      description: "プレイヤーのチームを変更しました",
     })
   }
 
@@ -179,10 +519,19 @@ export default function MahjongScoreManager() {
     gameResults.forEach((result) => {
       result.players.forEach((player) => {
         if (!playerStats.has(player.name)) {
+          // プレイヤーのチーム情報を取得
+          const registeredPlayer = registeredPlayers.find((p) => p.name === player.name)
+          const teamId = registeredPlayer?.teamId || "default"
+          const team = teams.find((t) => t.id === teamId) || teams[0]
+
           playerStats.set(player.name, {
             name: player.name,
+            teamId: teamId,
+            teamName: team.name,
+            teamColor: team.color,
             totalScore: 0,
             gameCount: 0,
+            totalRank: 0,
             wins: 0,
             seconds: 0,
             thirds: 0,
@@ -193,6 +542,7 @@ export default function MahjongScoreManager() {
         const stats = playerStats.get(player.name)
         stats.totalScore += player.score
         stats.gameCount += 1
+        stats.totalRank += player.rank
 
         if (player.rank === 1) stats.wins += 1
         else if (player.rank === 2) stats.seconds += 1
@@ -204,8 +554,57 @@ export default function MahjongScoreManager() {
     return Array.from(playerStats.values())
       .map((stats) => ({
         ...stats,
-        averageScore: stats.gameCount > 0 ? Math.round((stats.totalScore / stats.gameCount) * 10) / 10 : 0,
-        winRate: stats.gameCount > 0 ? Math.round((stats.wins / stats.gameCount) * 1000) / 10 : 0,
+        averageScore: stats.gameCount > 0 ? stats.totalScore / stats.gameCount : 0,
+        averageRank: stats.gameCount > 0 ? stats.totalRank / stats.gameCount : 0,
+      }))
+      .sort((a, b) => b.totalScore - a.totalScore)
+  }
+
+  // チーム統計を計算
+  const calculateTeamStats = () => {
+    const playerStats = calculatePlayerStats()
+    const teamStats = new Map()
+
+    // チームごとに統計を集計（未所属チームを除外）
+    teams
+      .filter((team) => team.id !== "default")
+      .forEach((team) => {
+        teamStats.set(team.id, {
+          id: team.id,
+          name: team.name,
+          color: team.color,
+          totalScore: 0,
+          gameCount: 0,
+          playerCount: 0,
+          totalRank: 0,
+          wins: 0,
+          seconds: 0,
+          thirds: 0,
+          fourths: 0,
+        })
+      })
+
+    // プレイヤー統計からチーム統計を集計
+    playerStats.forEach((player) => {
+      const teamId = player.teamId
+      if (teamStats.has(teamId)) {
+        const team = teamStats.get(teamId)
+        team.totalScore += player.totalScore
+        team.gameCount += player.gameCount
+        team.playerCount += 1
+        team.totalRank += player.totalRank
+        team.wins += player.wins
+        team.seconds += player.seconds
+        team.thirds += player.thirds
+        team.fourths += player.fourths
+      }
+    })
+
+    return Array.from(teamStats.values())
+      .map((team) => ({
+        ...team,
+        averageScore: team.gameCount > 0 ? team.totalScore / team.gameCount : 0,
+        averageRank: team.gameCount > 0 ? team.totalRank / team.gameCount : 0,
       }))
       .sort((a, b) => b.totalScore - a.totalScore)
   }
@@ -274,87 +673,116 @@ export default function MahjongScoreManager() {
   // 現在の持ち点合計を計算
   const currentTotal = players.reduce((sum, player) => sum + player.points, 0)
 
+  // チーム名を取得
+  const getTeamName = (teamId: string) => {
+    const team = teams.find((t) => t.id === teamId)
+    return team ? team.name : "未所属"
+  }
+
+  // チームカラーを取得
+  const getTeamColor = (teamId: string) => {
+    const team = teams.find((t) => t.id === teamId)
+    return team ? team.color : "bg-gray-100 text-gray-800"
+  }
+
+  // プレイヤーランキングのデータを取得
+  const getPlayerRankingData = () => {
+    const playerStats = calculatePlayerStats()
+
+    // チームフィルターを適用
+    const filteredData =
+      teamFilter === "all" ? playerStats : playerStats.filter((player) => player.teamId === teamFilter)
+
+    // ソートを適用
+    const sortedData = sortConfig ? sortData(filteredData, sortConfig.key, sortConfig.direction) : filteredData
+
+    return sortedData
+  }
+
+  // チームランキングのデータを取得
+  const getTeamRankingData = () => {
+    const teamStats = calculateTeamStats()
+
+    // ソートを適用
+    const sortedData = sortConfig ? sortData(teamStats, sortConfig.key, sortConfig.direction) : teamStats
+
+    return sortedData
+  }
+
+  // スコアの表示形式を統一
+  const formatScore = (score: number) => {
+    const formatted = score.toFixed(1)
+    return score > 0 ? `+${formatted}` : formatted
+  }
+
+  // 平均順位の表示形式を統一
+  const formatAverageRank = (rank: number) => {
+    return rank.toFixed(2)
+  }
+
   return (
-    <div className="container mx-auto p-4 max-w-2xl">
+    <div className="container mx-auto p-4 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">麻雀成績管理</h1>
+        <h1 className="text-3xl font-bold mb-2">ナインリーグ成績入力</h1>
         <p className="text-muted-foreground mb-4">4人麻雀の成績を記録・管理できます</p>
 
-        <div className="flex gap-2">
-          <Button variant={currentView === "input" ? "default" : "outline"} onClick={() => setCurrentView("input")}>
-            成績入力
-          </Button>
-          <Button variant={currentView === "ranking" ? "default" : "outline"} onClick={() => setCurrentView("ranking")}>
-            通算ランキング
-          </Button>
-        </div>
+        <Tabs value={currentView} onValueChange={handleTabChange}>
+          <TabsList className="grid grid-cols-6">
+            <TabsTrigger value="input">成績入力</TabsTrigger>
+            <TabsTrigger value="playerRanking">プレイヤーランキング</TabsTrigger>
+            <TabsTrigger value="teamRanking">チームランキング</TabsTrigger>
+            <TabsTrigger value="playerManagement" className="flex items-center gap-1">
+              <User className="w-4 h-4" />
+              プレイヤー管理
+              <Lock className="w-3 h-3" />
+            </TabsTrigger>
+            <TabsTrigger value="teamManagement" className="flex items-center gap-1">
+              <Users className="w-4 h-4" />
+              チーム管理
+              <Lock className="w-3 h-3" />
+            </TabsTrigger>
+            <TabsTrigger value="gameHistory" className="flex items-center gap-1">
+              <History className="w-4 h-4" />
+              過去の成績
+              <Lock className="w-3 h-3" />
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      {currentView === "input" && (
-        <>
-          {/* プレイヤー管理 */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  プレイヤー管理
-                </span>
-                <Dialog open={isPlayerDialogOpen} onOpenChange={setIsPlayerDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      プレイヤー追加
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>新しいプレイヤーを追加</DialogTitle>
-                      <DialogDescription>プレイヤー名を入力してください</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <Input
-                        placeholder="プレイヤー名"
-                        value={newPlayerName}
-                        onChange={(e) => setNewPlayerName(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addNewPlayer()}
-                      />
-                      <div className="flex gap-2">
-                        <Button onClick={addNewPlayer} className="flex-1">
-                          追加
-                        </Button>
-                        <Button variant="outline" onClick={() => setIsPlayerDialogOpen(false)}>
-                          キャンセル
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {registeredPlayers.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">プレイヤーが登録されていません</p>
-              ) : (
-                <div className="space-y-2">
-                  {registeredPlayers.map((player) => (
-                    <div key={player.id} className="flex items-center justify-between p-2 border rounded">
-                      <span>{player.name}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => deletePlayer(player.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      {/* パスワード認証ダイアログ */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>管理画面へのアクセス</DialogTitle>
+            <DialogDescription>管理画面にアクセスするにはパスワードが必要です</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="password">パスワード</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="パスワードを入力"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handlePasswordSubmit()}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handlePasswordSubmit} className="flex-1">
+                認証
+              </Button>
+              <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
+                キャンセル
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
+      {currentView === "input" && (
+        <div>
           {/* 成績入力フォーム */}
           <Card className="mb-8">
             <CardHeader>
@@ -368,7 +796,6 @@ export default function MahjongScoreManager() {
               <div className="space-y-4">
                 {players.map((player, index) => (
                   <div key={index} className="space-y-2">
-                    <Label htmlFor={`player-${index}`}>プレイヤー {index + 1}</Label>
                     <div className="flex gap-2">
                       <Select value={player.name} onValueChange={(value) => updatePlayerName(index, value)}>
                         <SelectTrigger className="flex-1">
@@ -407,31 +834,428 @@ export default function MahjongScoreManager() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
 
-          {/* 成績一覧 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>過去の成績</CardTitle>
-              <CardDescription>保存された麻雀の成績一覧（{gameResults.length}件）</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {gameResults.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">まだ成績が記録されていません</div>
-              ) : (
-                <div className="space-y-4">
-                  {gameResults.map((result) => (
-                    <div key={result.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
+      {currentView === "playerRanking" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="w-5 h-5" />
+              プレイヤーランキング
+            </CardTitle>
+            <CardDescription>プレイヤー別の通算成績（累計スコア順）</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* チームフィルター */}
+            <div className="flex items-center gap-2 mb-4">
+              <Label htmlFor="team-filter" className="text-sm font-medium">
+                チームでフィルター:
+              </Label>
+              <Select value={teamFilter} onValueChange={setTeamFilter}>
+                <SelectTrigger id="team-filter" className="w-48">
+                  <SelectValue placeholder="チームを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">すべてのチーム</SelectItem>
+                  {teams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {gameResults.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">成績データがありません</div>
+            ) : (
+              <div className="space-y-4">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">順位</TableHead>
+                        <SortableHeader sortKey="name">プレイヤー</SortableHeader>
+                        <SortableHeader sortKey="teamName">チーム</SortableHeader>
+                        <SortableHeader sortKey="totalScore" className="text-right">
+                          累計スコア
+                        </SortableHeader>
+                        <SortableHeader sortKey="gameCount" className="text-right">
+                          ゲーム数
+                        </SortableHeader>
+                        <SortableHeader sortKey="averageScore" className="text-right">
+                          平均スコア
+                        </SortableHeader>
+                        <SortableHeader sortKey="averageRank" className="text-right">
+                          平均順位
+                        </SortableHeader>
+                        <SortableHeader sortKey="wins" className="text-right">
+                          1位
+                        </SortableHeader>
+                        <SortableHeader sortKey="seconds" className="text-right">
+                          2位
+                        </SortableHeader>
+                        <SortableHeader sortKey="thirds" className="text-right">
+                          3位
+                        </SortableHeader>
+                        <SortableHeader sortKey="fourths" className="text-right">
+                          4位
+                        </SortableHeader>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getPlayerRankingData().map((player) => {
+                        // 累計スコア順での順位を計算
+                        const allPlayerStats = calculatePlayerStats()
+                        const rankByTotalScore = allPlayerStats.findIndex((p) => p.name === player.name) + 1
+
+                        return (
+                          <TableRow key={player.name}>
+                            <TableCell className="font-medium">{rankByTotalScore}</TableCell>
+                            <TableCell className="font-medium">{player.name}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded text-xs ${player.teamColor}`}>{player.teamName}</span>
+                            </TableCell>
+                            <TableCell
+                              className={`text-right font-medium ${
+                                player.totalScore > 0 ? "text-green-600" : player.totalScore < 0 ? "text-red-600" : ""
+                              }`}
+                            >
+                              {formatScore(player.totalScore)}
+                            </TableCell>
+                            <TableCell className="text-right">{player.gameCount}</TableCell>
+                            <TableCell
+                              className={`text-right ${
+                                player.averageScore > 0
+                                  ? "text-green-600"
+                                  : player.averageScore < 0
+                                    ? "text-red-600"
+                                    : ""
+                              }`}
+                            >
+                              {formatScore(player.averageScore)}
+                            </TableCell>
+                            <TableCell className="text-right">{formatAverageRank(player.averageRank)}</TableCell>
+                            <TableCell className="text-right">{player.wins}</TableCell>
+                            <TableCell className="text-right">{player.seconds}</TableCell>
+                            <TableCell className="text-right">{player.thirds}</TableCell>
+                            <TableCell className="text-right">{player.fourths}</TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* フィルター結果の表示 */}
+                {teamFilter !== "all" && (
+                  <div className="text-sm text-muted-foreground text-center">
+                    {(() => {
+                      const playerStats = calculatePlayerStats()
+                      const filteredCount = playerStats.filter((player) => player.teamId === teamFilter).length
+                      const teamName = getTeamName(teamFilter)
+                      return `${teamName}のプレイヤー: ${filteredCount}人`
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {currentView === "teamRanking" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              チームランキング
+            </CardTitle>
+            <CardDescription>チーム別の通算成績（累計スコア順）</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {gameResults.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">成績データがありません</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">順位</TableHead>
+                      <SortableHeader sortKey="name">チーム</SortableHeader>
+                      <SortableHeader sortKey="playerCount" className="text-right">
+                        メンバー数
+                      </SortableHeader>
+                      <SortableHeader sortKey="totalScore" className="text-right">
+                        累計スコア
+                      </SortableHeader>
+                      <SortableHeader sortKey="gameCount" className="text-right">
+                        ゲーム数
+                      </SortableHeader>
+                      <SortableHeader sortKey="averageScore" className="text-right">
+                        平均スコア
+                      </SortableHeader>
+                      <SortableHeader sortKey="averageRank" className="text-right">
+                        平均順位
+                      </SortableHeader>
+                      <SortableHeader sortKey="wins" className="text-right">
+                        1位
+                      </SortableHeader>
+                      <SortableHeader sortKey="seconds" className="text-right">
+                        2位
+                      </SortableHeader>
+                      <SortableHeader sortKey="thirds" className="text-right">
+                        3位
+                      </SortableHeader>
+                      <SortableHeader sortKey="fourths" className="text-right">
+                        4位
+                      </SortableHeader>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {getTeamRankingData().map((team) => {
+                      // 累計スコア順での順位を計算
+                      const allTeamStats = calculateTeamStats()
+                      const rankByTotalScore = allTeamStats.findIndex((t) => t.id === team.id) + 1
+
+                      return (
+                        <TableRow key={team.id}>
+                          <TableCell className="font-medium">{rankByTotalScore}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded text-xs ${team.color}`}>{team.name}</span>
+                          </TableCell>
+                          <TableCell className="text-right">{team.playerCount}</TableCell>
+                          <TableCell
+                            className={`text-right font-medium ${
+                              team.totalScore > 0 ? "text-green-600" : team.totalScore < 0 ? "text-red-600" : ""
+                            }`}
+                          >
+                            {formatScore(team.totalScore)}
+                          </TableCell>
+                          <TableCell className="text-right">{team.gameCount}</TableCell>
+                          <TableCell
+                            className={`text-right ${
+                              team.averageScore > 0 ? "text-green-600" : team.averageScore < 0 ? "text-red-600" : ""
+                            }`}
+                          >
+                            {formatScore(team.averageScore)}
+                          </TableCell>
+                          <TableCell className="text-right">{formatAverageRank(team.averageRank)}</TableCell>
+                          <TableCell className="text-right">{team.wins}</TableCell>
+                          <TableCell className="text-right">{team.seconds}</TableCell>
+                          <TableCell className="text-right">{team.thirds}</TableCell>
+                          <TableCell className="text-right">{team.fourths}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {currentView === "playerManagement" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                プレイヤー管理
+              </span>
+              <Dialog open={isPlayerDialogOpen} onOpenChange={setIsPlayerDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    プレイヤー追加
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>新しいプレイヤーを追加</DialogTitle>
+                    <DialogDescription>プレイヤー名とチームを選択してください</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="player-name">プレイヤー名</Label>
+                      <Input
+                        id="player-name"
+                        placeholder="プレイヤー名"
+                        value={newPlayerName}
+                        onChange={(e) => setNewPlayerName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="player-team">所属チーム</Label>
+                      <Select value={newPlayerTeamId} onValueChange={setNewPlayerTeamId}>
+                        <SelectTrigger id="player-team">
+                          <SelectValue placeholder="チームを選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teams.map((team) => (
+                            <SelectItem key={team.id} value={team.id}>
+                              {team.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={addNewPlayer} className="flex-1">
+                        追加
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsPlayerDialogOpen(false)}>
+                        キャンセル
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {registeredPlayers.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">プレイヤーが登録されていません</p>
+            ) : (
+              <div className="space-y-2">
+                {registeredPlayers.map((player) => (
+                  <div key={player.id} className="flex items-center justify-between p-2 border rounded">
+                    <div className="flex items-center gap-2">
+                      <span>{player.name}</span>
+                      <span className={`px-2 py-1 rounded text-xs ${getTeamColor(player.teamId)}`}>
+                        {getTeamName(player.teamId)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={player.teamId} onValueChange={(value) => updatePlayerTeam(player.id, value)}>
+                        <SelectTrigger className="h-8 w-32">
+                          <SelectValue placeholder="チーム変更" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teams.map((team) => (
+                            <SelectItem key={team.id} value={team.id}>
+                              {team.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deletePlayer(player.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {currentView === "teamManagement" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                チーム管理
+              </span>
+              <Dialog open={isTeamDialogOpen} onOpenChange={setIsTeamDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    チーム追加
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>新しいチームを追加</DialogTitle>
+                    <DialogDescription>チーム名を入力してください</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="チーム名"
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && addNewTeam()}
+                    />
+                    <div className="flex gap-2">
+                      <Button onClick={addNewTeam} className="flex-1">
+                        追加
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsTeamDialogOpen(false)}>
+                        キャンセル
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {teams.map((team) => (
+                <div key={team.id} className="flex items-center justify-between p-2 border rounded">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 rounded text-xs ${team.color}`}>{team.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {registeredPlayers.filter((p) => p.teamId === team.id).length}人
+                    </span>
+                  </div>
+                  {team.id !== "default" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteTeam(team.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {currentView === "gameHistory" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              過去の成績
+            </CardTitle>
+            <CardDescription>保存された麻雀の成績一覧（{gameResults.length}件）</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {gameResults.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">まだ成績が記録されていません</div>
+            ) : (
+              <div className="space-y-4">
+                {gameResults.map((result) => (
+                  <div key={result.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
                         <h3 className="font-semibold">{result.date}</h3>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteGameResult(result.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteGameResult(result.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -442,83 +1266,36 @@ export default function MahjongScoreManager() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {result.players.map((player, index) => (
-                            <TableRow key={index}>
-                              <TableCell className="font-medium">{player.name}</TableCell>
-                              <TableCell className="text-right">{player.points.toLocaleString()}点</TableCell>
-                              <TableCell
-                                className={`text-right ${player.score > 0 ? "text-green-600" : player.score < 0 ? "text-red-600" : ""}`}
-                              >
-                                {player.score > 0 ? `+${player.score}` : player.score}
-                              </TableCell>
-                              <TableCell className="text-right">{player.rank}位</TableCell>
-                            </TableRow>
-                          ))}
+                          {result.players.map((player, index) => {
+                            const registeredPlayer = registeredPlayers.find((p) => p.name === player.name)
+                            const teamId = registeredPlayer?.teamId || "default"
+
+                            return (
+                              <TableRow key={index}>
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {player.name}
+                                    <span className={`px-2 py-1 rounded text-xs ${getTeamColor(teamId)}`}>
+                                      {getTeamName(teamId)}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">{player.points.toLocaleString()}点</TableCell>
+                                <TableCell
+                                  className={`text-right ${player.score > 0 ? "text-green-600" : player.score < 0 ? "text-red-600" : ""}`}
+                                >
+                                  {formatScore(player.score)}
+                                </TableCell>
+                                <TableCell className="text-right">{player.rank}位</TableCell>
+                              </TableRow>
+                            )
+                          })}
                         </TableBody>
                       </Table>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      {currentView === "ranking" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>通算ランキング</CardTitle>
-            <CardDescription>プレイヤー別の通算成績（累計スコア順）</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {gameResults.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">成績データがありません</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-16">順位</TableHead>
-                    <TableHead>プレイヤー</TableHead>
-                    <TableHead className="text-right">累計スコア</TableHead>
-                    <TableHead className="text-right">ゲーム数</TableHead>
-                    <TableHead className="text-right">平均スコア</TableHead>
-                    <TableHead className="text-right">勝率</TableHead>
-                    <TableHead className="text-right">1位</TableHead>
-                    <TableHead className="text-right">2位</TableHead>
-                    <TableHead className="text-right">3位</TableHead>
-                    <TableHead className="text-right">4位</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {calculatePlayerStats().map((player, index) => (
-                    <TableRow key={player.name}>
-                      <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell className="font-medium">{player.name}</TableCell>
-                      <TableCell
-                        className={`text-right font-medium ${
-                          player.totalScore > 0 ? "text-green-600" : player.totalScore < 0 ? "text-red-600" : ""
-                        }`}
-                      >
-                        {player.totalScore > 0 ? `+${player.totalScore}` : player.totalScore}
-                      </TableCell>
-                      <TableCell className="text-right">{player.gameCount}</TableCell>
-                      <TableCell
-                        className={`text-right ${
-                          player.averageScore > 0 ? "text-green-600" : player.averageScore < 0 ? "text-red-600" : ""
-                        }`}
-                      >
-                        {player.averageScore > 0 ? `+${player.averageScore}` : player.averageScore}
-                      </TableCell>
-                      <TableCell className="text-right">{player.winRate}%</TableCell>
-                      <TableCell className="text-right">{player.wins}</TableCell>
-                      <TableCell className="text-right">{player.seconds}</TableCell>
-                      <TableCell className="text-right">{player.thirds}</TableCell>
-                      <TableCell className="text-right">{player.fourths}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
