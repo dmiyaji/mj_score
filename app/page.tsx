@@ -3,11 +3,10 @@
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -18,18 +17,15 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-// インポートに新しいアイコンを追加
 import {
-  Trash2,
-  Plus,
-  UserPlus,
   Users,
-  Trophy,
   User,
   Lock,
   History,
-  Edit,
   Download,
   Upload,
   Database,
@@ -37,8 +33,17 @@ import {
   Star,
   Medal,
   Crown,
+  CalendarIcon,
+  X,
+  Share2,
+  ExternalLink,
+  Plus,
+  UserPlus,
+  Edit,
+  Trash2,
   TrendingUp,
   TrendingDown,
+  Trophy,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -50,6 +55,9 @@ import {
   importOperations,
 } from "@/lib/database"
 import type { Team, Player, PlayerStats, TeamStats } from "@/lib/supabase"
+import { format } from "date-fns"
+import { ja } from "date-fns/locale"
+import PublicRanking from "@/components/public-ranking"
 
 // チームのデフォルトカラー（より洗練されたカラーパレット）
 const TEAM_COLORS = [
@@ -74,6 +82,9 @@ export default function MahjongScoreManager() {
     { name: "", points: 0 },
   ])
 
+  // 持ち点入力エリアへの参照を追加
+  const pointsInputRef = useRef<HTMLDivElement>(null)
+
   // データベースから取得するデータ
   const [teams, setTeams] = useState<Team[]>([])
   const [registeredPlayers, setRegisteredPlayers] = useState<Player[]>([])
@@ -91,13 +102,30 @@ export default function MahjongScoreManager() {
   const { toast } = useToast()
 
   const [currentView, setCurrentView] = useState<
-    "input" | "playerRanking" | "teamRanking" | "playerManagement" | "teamManagement" | "gameHistory" | "dataManagement"
+    | "input"
+    | "playerRanking"
+    | "teamRanking"
+    | "playerManagement"
+    | "teamManagement"
+    | "gameHistory"
+    | "dataManagement"
+    | "publicRanking"
   >("input")
   const [sortConfig, setSortConfig] = useState<{
     key: string
     direction: "asc" | "desc"
   } | null>(null)
   const [teamFilter, setTeamFilter] = useState<string>("all")
+
+  // 期間フィルター用の状態を追加
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined)
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined)
+
+  // 公開ランキング用の状態
+  const [publicRankingTitle, setPublicRankingTitle] = useState("DAY 22")
+  const [publicRankingDate, setPublicRankingDate] = useState<Date>(new Date())
+  const [previousSessionDate, setPreviousSessionDate] = useState<Date | undefined>(undefined)
+  const [isPublicRankingDialogOpen, setIsPublicRankingDialogOpen] = useState(false)
 
   // パスワード認証関連
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -142,12 +170,12 @@ export default function MahjongScoreManager() {
     }
   }
 
-  // 統計データ読み込み
+  // 統計データ読み込み（期間フィルター対応）
   const loadStats = async () => {
     try {
       const [playerStatsData, teamStatsData] = await Promise.all([
-        statsOperations.getPlayerStats(teamFilter),
-        statsOperations.getTeamStats(),
+        statsOperations.getPlayerStats(teamFilter, dateFrom, dateTo),
+        statsOperations.getTeamStats(dateFrom, dateTo),
       ])
 
       setPlayerStats(playerStatsData)
@@ -162,12 +190,27 @@ export default function MahjongScoreManager() {
     loadData()
   }, [])
 
-  // 統計データ読み込み（チームフィルター変更時）
+  // プレイヤーが4人選択されたときの自動スクロール処理を追加（loadData関数の後に追加）
+  useEffect(() => {
+    const selectedCount = players.filter((p) => p.name !== "").length
+    if (selectedCount === 4 && pointsInputRef.current) {
+      // 少し遅延を入れてスムーズにスクロール
+      setTimeout(() => {
+        pointsInputRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest",
+        })
+      }, 300)
+    }
+  }, [players])
+
+  // 統計データ読み込み（チームフィルターと期間フィルター変更時）
   useEffect(() => {
     if (currentView === "playerRanking" || currentView === "teamRanking") {
       loadStats()
     }
-  }, [currentView, teamFilter])
+  }, [currentView, teamFilter, dateFrom, dateTo])
 
   // パスワード認証が必要な画面かチェック
   const requiresAuth = (view: string) => {
@@ -203,6 +246,18 @@ export default function MahjongScoreManager() {
     } else {
       setCurrentView(value as any)
     }
+  }
+
+  // 期間フィルターをクリアする関数
+  const clearDateFilters = () => {
+    setDateFrom(undefined)
+    setDateTo(undefined)
+  }
+
+  // 公開ランキング生成
+  const generatePublicRanking = () => {
+    setCurrentView("publicRanking")
+    setIsPublicRankingDialogOpen(false)
   }
 
   // エクスポート関数を追加
@@ -416,6 +471,36 @@ export default function MahjongScoreManager() {
           </div>
         </div>
       </TableHead>
+    )
+  }
+
+  // 日付選択コンポーネント
+  const DatePicker = ({
+    date,
+    onDateChange,
+    placeholder,
+  }: {
+    date: Date | undefined
+    onDateChange: (date: Date | undefined) => void
+    placeholder: string
+  }) => {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={`w-full justify-start text-left font-normal text-xs sm:text-sm h-10 border-2 focus:border-blue-500 ${
+              !date && "text-muted-foreground"
+            }`}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {date ? format(date, "yyyy/MM/dd", { locale: ja }) : placeholder}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar mode="single" selected={date} onSelect={onDateChange} initialFocus locale={ja} />
+        </PopoverContent>
+      </Popover>
     )
   }
 
@@ -882,6 +967,30 @@ export default function MahjongScoreManager() {
     )
   }
 
+  // 公開ランキング表示
+  if (currentView === "publicRanking") {
+    return (
+      <div className="relative">
+        <div className="absolute top-4 left-4 z-50">
+          <Button
+            onClick={() => setCurrentView("teamRanking")}
+            variant="outline"
+            size="sm"
+            className="bg-white/90 backdrop-blur-sm border-2 hover:bg-white transition-all duration-200"
+          >
+            ← 管理画面に戻る
+          </Button>
+        </div>
+        <PublicRanking
+          title={publicRankingTitle}
+          date={publicRankingDate}
+          previousSessionDate={previousSessionDate}
+          showLogo={true}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="container mx-auto p-2 sm:p-4 max-w-7xl">
@@ -896,10 +1005,92 @@ export default function MahjongScoreManager() {
                   className="w-12 h-12 sm:w-16 sm:h-16 object-contain"
                 />
               </div>
-              <div>
+              <div className="flex-1">
                 <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   ナインリーグ成績入力
                 </h1>
+              </div>
+              <div className="flex gap-2">
+                <Dialog open={isPublicRankingDialogOpen} onOpenChange={setIsPublicRankingDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs sm:text-sm h-10 border-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+                    >
+                      <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      公開ランキング
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="w-[90vw] max-w-md bg-white/95 backdrop-blur-sm border border-white/20">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg flex items-center gap-2">
+                        <Share2 className="w-5 h-5 text-green-600" />
+                        公開ランキング生成
+                      </DialogTitle>
+                      <DialogDescription className="text-sm">
+                        外部公開用のランキングページを生成します
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ranking-title" className="text-sm font-medium">
+                          タイトル
+                        </Label>
+                        <Input
+                          id="ranking-title"
+                          placeholder="DAY 22"
+                          value={publicRankingTitle}
+                          onChange={(e) => setPublicRankingTitle(e.target.value)}
+                          className="text-sm border-2 focus:border-green-500 transition-colors duration-200"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">開催日</Label>
+                        <DatePicker
+                          date={publicRankingDate}
+                          onDateChange={(date) => setPublicRankingDate(date || new Date())}
+                          placeholder="開催日を選択"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">前節基準日（今節ポイント計算用）</Label>
+                        <DatePicker
+                          date={previousSessionDate}
+                          onDateChange={setPreviousSessionDate}
+                          placeholder="前節基準日を選択（任意）"
+                        />
+                        {previousSessionDate && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setPreviousSessionDate(undefined)}
+                            className="h-6 text-xs text-gray-500 hover:text-red-600"
+                          >
+                            <X className="w-3 h-3 mr-1" />
+                            クリア
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={generatePublicRanking}
+                          className="flex-1 text-sm bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transition-all duration-200"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          生成
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsPublicRankingDialogOpen(false)}
+                          className="text-sm border-2 hover:bg-slate-50 transition-colors duration-200"
+                        >
+                          キャンセル
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
 
@@ -1190,6 +1381,7 @@ export default function MahjongScoreManager() {
           </DialogContent>
         </Dialog>
 
+        {/* メインコンテンツ */}
         {currentView === "input" && (
           <div>
             {/* 成績入力フォーム */}
@@ -1202,51 +1394,18 @@ export default function MahjongScoreManager() {
                   新しいゲーム結果を入力
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
-                  プレイヤーと持ち点を入力してください（持ち点の合計は10万点、下2桁は省略して入力）
+                  まずプレイヤーを4人選択してから、持ち点を入力してください（持ち点の合計は10万点、下2桁は省略して入力）
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3 sm:space-y-6 p-6">
-                {/* 選択されたプレイヤー表示 */}
-                <div className="space-y-2 sm:space-y-4">
-                  {players.map((player, index) => (
-                    <div key={index} className="space-y-1 sm:space-y-2">
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 p-3 border-2 rounded-xl min-h-[40px] sm:min-h-[48px] bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-200">
-                            {player.name ? (
-                              <div className="flex items-center justify-between w-full">
-                                <span className="text-xs sm:text-sm font-medium text-slate-700">{player.name}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => updatePlayerNameInput(index, "")}
-                                  className="h-6 w-6 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
-                                >
-                                  ×
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-xs sm:text-sm text-muted-foreground">
-                                プレイヤー{index + 1}を選択
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <Input
-                          type="number"
-                          placeholder="持ち点"
-                          value={player.points / 100 || ""}
-                          onChange={(e) => updatePlayerPoints(index, Number.parseInt(e.target.value) || 0)}
-                          className="w-20 sm:w-32 text-xs sm:text-sm h-10 sm:h-12 border-2 focus:border-blue-500 transition-colors duration-200"
-                        />
-                      </div>
+              <CardContent className="space-y-6 p-6">
+                {/* プレイヤー選択エリア（上に移動） */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium text-slate-700">プレイヤーを選択</Label>
+                    <div className="text-xs text-muted-foreground bg-slate-50 px-3 py-1 rounded-full border">
+                      選択済み: {players.filter((p) => p.name !== "").length}/4人
                     </div>
-                  ))}
-                </div>
-
-                {/* プレイヤー選択エリア */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-slate-700">プレイヤーを選択</Label>
+                  </div>
 
                   {/* チーム別プレイヤー表示 */}
                   <div className="space-y-4">
@@ -1308,10 +1467,67 @@ export default function MahjongScoreManager() {
                       )
                     })}
                   </div>
+                </div>
 
-                  {/* 選択状況表示 */}
-                  <div className="text-xs text-muted-foreground bg-slate-50 p-2 rounded-lg">
-                    選択済み: {players.filter((p) => p.name !== "").length}/4人
+                {/* 選択されたプレイヤーと持ち点入力エリア（下に移動） */}
+                <div ref={pointsInputRef} className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium text-slate-700">持ち点を入力</Label>
+                    <div className="text-xs text-muted-foreground">
+                      {players.filter((p) => p.name !== "").length === 4 ? (
+                        <span className="text-green-600 font-medium">✓ プレイヤー選択完了</span>
+                      ) : (
+                        <span className="text-amber-600">プレイヤーを4人選択してください</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {players.map((player, index) => (
+                      <div key={index} className="space-y-1">
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <div
+                              className={`flex items-center gap-2 p-3 border-2 rounded-xl min-h-[40px] sm:min-h-[48px] backdrop-blur-sm transition-all duration-200 ${
+                                player.name
+                                  ? "bg-white/70 border-green-200 hover:bg-white/80"
+                                  : "bg-white/30 border-gray-200 hover:bg-white/40"
+                              }`}
+                            >
+                              {player.name ? (
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-xs sm:text-sm font-medium text-slate-700">{player.name}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => updatePlayerNameInput(index, "")}
+                                    className="h-6 w-6 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
+                                  >
+                                    ×
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-xs sm:text-sm text-muted-foreground">
+                                  プレイヤー{index + 1}を選択してください
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Input
+                            type="number"
+                            placeholder="持ち点"
+                            value={player.points / 100 || ""}
+                            onChange={(e) => updatePlayerPoints(index, Number.parseInt(e.target.value) || 0)}
+                            disabled={!player.name}
+                            className={`w-20 sm:w-32 text-xs sm:text-sm h-10 sm:h-12 border-2 transition-colors duration-200 ${
+                              player.name
+                                ? "focus:border-blue-500 bg-white"
+                                : "bg-gray-50 border-gray-200 cursor-not-allowed"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -1347,34 +1563,70 @@ export default function MahjongScoreManager() {
               <CardDescription className="text-xs sm:text-sm">プレイヤー別の通算成績（累計スコア順）</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              {/* チームフィルター */}
-              <div className="flex items-center gap-2 mb-4 sm:mb-6">
-                <Label htmlFor="team-filter" className="text-xs sm:text-sm font-medium whitespace-nowrap">
-                  チーム:
-                </Label>
-                <Select value={teamFilter} onValueChange={setTeamFilter}>
-                  <SelectTrigger
-                    id="team-filter"
-                    className="w-32 sm:w-48 text-xs sm:text-sm h-10 border-2 focus:border-blue-500"
-                  >
-                    <SelectValue placeholder="チームを選択" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="text-xs sm:text-sm">
-                      すべてのチーム
-                    </SelectItem>
-                    {teams.map((team) => (
-                      <SelectItem key={team.id} value={team.id} className="text-xs sm:text-sm">
-                        {team.name}
+              {/* フィルター */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-4 sm:mb-6">
+                {/* チームフィルター */}
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="team-filter" className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                    チーム:
+                  </Label>
+                  <Select value={teamFilter} onValueChange={setTeamFilter}>
+                    <SelectTrigger
+                      id="team-filter"
+                      className="w-32 sm:w-48 text-xs sm:text-sm h-10 border-2 focus:border-blue-500"
+                    >
+                      <SelectValue placeholder="チームを選択" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs sm:text-sm">
+                        すべてのチーム
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      {teams.map((team) => (
+                        <SelectItem key={team.id} value={team.id} className="text-xs sm:text-sm">
+                          {team.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 期間フィルター */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Label className="text-xs sm:text-sm font-medium whitespace-nowrap">集計期間:</Label>
+                  <div className="flex items-center gap-2">
+                    <DatePicker date={dateFrom} onDateChange={setDateFrom} placeholder="開始日" />
+                    <span className="text-xs text-muted-foreground">〜</span>
+                    <DatePicker date={dateTo} onDateChange={setDateTo} placeholder="終了日" />
+                    {(dateFrom || dateTo) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearDateFilters}
+                        className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
+
+              {/* 期間表示 */}
+              {(dateFrom || dateTo) && (
+                <div className="mb-4 text-xs text-muted-foreground bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 text-blue-600" />
+                    <span>
+                      集計期間: {dateFrom ? format(dateFrom, "yyyy/MM/dd", { locale: ja }) : "開始日未設定"} 〜{" "}
+                      {dateTo ? format(dateTo, "yyyy/MM/dd", { locale: ja }) : "終了日未設定"}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {playerStats.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm bg-slate-50 rounded-xl">
-                  成績データがありません
+                  {dateFrom || dateTo ? "指定期間内に成績データがありません" : "成績データがありません"}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1402,16 +1654,16 @@ export default function MahjongScoreManager() {
                             順位
                           </SortableHeader>
                           <SortableHeader sortKey="wins" className="text-right w-6 sm:w-8">
-                            1位
+                            1着
                           </SortableHeader>
                           <SortableHeader sortKey="seconds" className="text-right w-6 sm:w-8">
-                            2位
+                            2着
                           </SortableHeader>
                           <SortableHeader sortKey="thirds" className="text-right w-6 sm:w-8">
-                            3位
+                            3着
                           </SortableHeader>
                           <SortableHeader sortKey="fourths" className="text-right w-6 sm:w-8">
-                            4位
+                            4着
                           </SortableHeader>
                         </TableRow>
                       </TableHeader>
@@ -1506,9 +1758,42 @@ export default function MahjongScoreManager() {
               <CardDescription className="text-xs sm:text-sm">チーム別の通算成績（累計スコア順）</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
+              {/* 期間フィルター */}
+              <div className="flex items-center gap-2 flex-wrap mb-4 sm:mb-6">
+                <Label className="text-xs sm:text-sm font-medium whitespace-nowrap">集計期間:</Label>
+                <div className="flex items-center gap-2">
+                  <DatePicker date={dateFrom} onDateChange={setDateFrom} placeholder="開始日" />
+                  <span className="text-xs text-muted-foreground">〜</span>
+                  <DatePicker date={dateTo} onDateChange={setDateTo} placeholder="終了日" />
+                  {(dateFrom || dateTo) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearDateFilters}
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* 期間表示 */}
+              {(dateFrom || dateTo) && (
+                <div className="mb-4 text-xs text-muted-foreground bg-purple-50 p-3 rounded-lg border border-purple-200">
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 text-purple-600" />
+                    <span>
+                      集計期間: {dateFrom ? format(dateFrom, "yyyy/MM/dd", { locale: ja }) : "開始日未設定"} 〜{" "}
+                      {dateTo ? format(dateTo, "yyyy/MM/dd", { locale: ja }) : "終了日未設定"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {teamStats.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm bg-slate-50 rounded-xl">
-                  成績データがありません
+                  {dateFrom || dateTo ? "指定期間内に成績データがありません" : "成績データがありません"}
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -1532,16 +1817,16 @@ export default function MahjongScoreManager() {
                           順位
                         </SortableHeader>
                         <SortableHeader sortKey="wins" className="text-right w-6 sm:w-8">
-                          1位
+                          1着
                         </SortableHeader>
                         <SortableHeader sortKey="seconds" className="text-right w-6 sm:w-8">
-                          2位
+                          2着
                         </SortableHeader>
                         <SortableHeader sortKey="thirds" className="text-right w-6 sm:w-8">
-                          3位
+                          3着
                         </SortableHeader>
                         <SortableHeader sortKey="fourths" className="text-right w-6 sm:w-8">
-                          4位
+                          4着
                         </SortableHeader>
                       </TableRow>
                     </TableHeader>
@@ -1601,6 +1886,7 @@ export default function MahjongScoreManager() {
           </Card>
         )}
 
+        {/* 残りのビューは変更なし */}
         {currentView === "playerManagement" && (
           <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
             <CardHeader className="pb-3 sm:pb-6 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-t-lg">
@@ -2012,7 +2298,7 @@ export default function MahjongScoreManager() {
                                   <TableCell className="text-right text-xs p-2">
                                     <div className="flex items-center justify-end gap-1">
                                       {getRankIcon(playerResult.rank)}
-                                      <span className="font-medium">{playerResult.rank}位</span>
+                                      <span className="font-medium">{playerResult.rank}着</span>
                                     </div>
                                   </TableCell>
                                 </TableRow>

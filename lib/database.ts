@@ -153,8 +153,8 @@ export const gameResultOperations = {
 
 // 統計関連の操作
 export const statsOperations = {
-  // プレイヤー統計取得
-  async getPlayerStats(teamFilter?: string): Promise<PlayerStats[]> {
+  // プレイヤー統計取得（期間フィルター対応）
+  async getPlayerStats(teamFilter?: string, dateFrom?: Date, dateTo?: Date): Promise<PlayerStats[]> {
     let query = supabase.from("player_game_results").select(`
         players!inner (
           id,
@@ -166,11 +166,25 @@ export const statsOperations = {
           )
         ),
         score,
-        rank
+        rank,
+        game_results!inner (
+          game_date
+        )
       `)
 
     if (teamFilter && teamFilter !== "all") {
       query = query.eq("players.team_id", teamFilter)
+    }
+
+    // 期間フィルターを追加
+    if (dateFrom) {
+      const fromDateString = dateFrom.toISOString().split("T")[0] + "T00:00:00.000Z"
+      query = query.gte("game_results.game_date", fromDateString)
+    }
+
+    if (dateTo) {
+      const toDateString = dateTo.toISOString().split("T")[0] + "T23:59:59.999Z"
+      query = query.lte("game_results.game_date", toDateString)
     }
 
     const { data, error } = await query
@@ -225,9 +239,9 @@ export const statsOperations = {
     return playerStats.sort((a, b) => b.total_score - a.total_score)
   },
 
-  // チーム統計取得
-  async getTeamStats(): Promise<TeamStats[]> {
-    const { data, error } = await supabase
+  // チーム統計取得（期間フィルター対応）
+  async getTeamStats(dateFrom?: Date, dateTo?: Date): Promise<TeamStats[]> {
+    let query = supabase
       .from("player_game_results")
       .select(`
         players!inner (
@@ -239,9 +253,25 @@ export const statsOperations = {
           )
         ),
         score,
-        rank
+        rank,
+        game_results!inner (
+          game_date
+        )
       `)
       .not("players.teams.id", "eq", "00000000-0000-0000-0000-000000000001") // 未所属チームを除外
+
+    // 期間フィルターを追加
+    if (dateFrom) {
+      const fromDateString = dateFrom.toISOString().split("T")[0] + "T00:00:00.000Z"
+      query = query.gte("game_results.game_date", fromDateString)
+    }
+
+    if (dateTo) {
+      const toDateString = dateTo.toISOString().split("T")[0] + "T23:59:59.999Z"
+      query = query.lte("game_results.game_date", toDateString)
+    }
+
+    const { data, error } = await query
 
     if (error) throw error
 
