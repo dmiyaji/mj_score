@@ -97,7 +97,7 @@ export default function PublicRanking({
 
   return (
     <div className="min-h-screen bg-white p-4 sm:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* ヘッダー */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
@@ -110,15 +110,15 @@ export default function PublicRanking({
           {/* ロゴ（背景） */}
           {showLogo && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <div className="text-6xl sm:text-8xl font-bold text-slate-100 opacity-30 select-none">NINE LEAGUE</div>
+              <div className="text-4xl sm:text-6xl font-bold text-slate-100 opacity-30 select-none">NINE LEAGUE</div>
             </div>
           )}
 
           {/* テーブル */}
           <div className="relative z-10 bg-white rounded-lg shadow-lg overflow-x-auto">
             {/* ヘッダー */}
-            <div className="bg-slate-50 border-b border-slate-200 min-w-[800px]">
-              <div className="grid grid-cols-[60px_200px_80px_100px_80px_80px_80px_60px_60px_60px_60px] gap-2 p-3 text-xs sm:text-sm font-semibold text-slate-700">
+            <div className="bg-slate-50 border-b border-slate-200">
+              <div className="grid grid-cols-[50px_200px_60px_90px_70px_80px_60px_50px_50px_50px_50px] gap-1 p-3 text-xs sm:text-sm font-semibold text-slate-700">
                 <div className="text-center">順位</div>
                 <div className="text-left">チーム</div>
                 <div className="text-center">試合数</div>
@@ -134,11 +134,11 @@ export default function PublicRanking({
             </div>
 
             {/* データ行 */}
-            <div className="divide-y divide-slate-100 min-w-[800px]">
+            <div className="divide-y divide-slate-100">
               {teamStats.map((team, index) => (
                 <div
                   key={team.id}
-                  className={`grid grid-cols-[60px_200px_80px_100px_80px_80px_80px_60px_60px_60px_60px] gap-2 p-3 text-xs sm:text-sm hover:bg-slate-50 transition-colors duration-200 ${
+                  className={`grid grid-cols-[50px_200px_60px_90px_70px_80px_60px_50px_50px_50px_50px] gap-1 p-3 text-xs sm:text-sm hover:bg-slate-50 transition-colors duration-200 ${
                     index % 2 === 0 ? "bg-white" : "bg-slate-25"
                   }`}
                 >
