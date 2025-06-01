@@ -49,6 +49,10 @@ export default function MahjongScoreManager() {
     const newView = handleTabChange(value)
     if (newView) {
       setCurrentView(newView as any)
+      // ランキング画面に切り替わった時に統計データを読み込む
+      if (newView === "playerRanking" || newView === "teamRanking") {
+        loadStats()
+      }
     }
   }
 
@@ -57,6 +61,10 @@ export default function MahjongScoreManager() {
     const newView = handlePasswordSubmit()
     if (newView) {
       setCurrentView(newView as any)
+      // ランキング画面に切り替わった時に統計データを読み込む
+      if (newView === "playerRanking" || newView === "teamRanking") {
+        loadStats()
+      }
     }
   }
 

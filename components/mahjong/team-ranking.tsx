@@ -20,14 +20,17 @@ interface TeamRankingProps {
 }
 
 export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps) {
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>({
+    key: "total_score",
+    direction: "desc",
+  })
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined)
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined)
 
-  // 統計データ読み込み（期間フィルター変更時）
+  // 統計データ読み込み（初回と期間フィルター変更時）
   useEffect(() => {
     onLoadStats(undefined, dateFrom, dateTo)
-  }, [dateFrom, dateTo, onLoadStats])
+  }, [dateFrom, dateTo]) // onLoadStatsを依存配列から削除
 
   // 期間フィルターをクリアする関数
   const clearDateFilters = () => {
@@ -37,25 +40,29 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
 
   // ソート機能
   const handleSort = (key: string) => {
-    let direction: "asc" | "desc" = "asc"
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc"
+    let direction: "asc" | "desc" = "desc"
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "desc") {
+      direction = "asc"
     }
     setSortConfig({ key, direction })
   }
 
   // データをソートする関数
-  const sortData = (data: any[], key: string, direction: "asc" | "desc") => {
+  const sortData = (data: TeamStats[], key: string, direction: "asc" | "desc") => {
     return [...data].sort((a, b) => {
-      const aValue = a[key]
-      const bValue = b[key]
+      let aValue: any = a[key as keyof TeamStats]
+      let bValue: any = b[key as keyof TeamStats]
 
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return direction === "asc" ? aValue - bValue : bValue - aValue
+      // 文字列の場合は小文字で比較
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        aValue = aValue.toLowerCase()
+        bValue = bValue.toLowerCase()
+        return direction === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
       }
 
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return direction === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
+      // 数値の場合
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return direction === "asc" ? aValue - bValue : bValue - aValue
       }
 
       return 0
@@ -81,21 +88,21 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
       <TableHead
         className={`cursor-pointer hover:bg-gradient-to-r hover:from-slate-50 hover:to-slate-100 select-none text-xs p-2 transition-all duration-200 ${
           align === "right" ? "text-right" : "text-left"
-        } ${className}`}
+        } ${className} ${isActive ? "bg-purple-50" : ""}`}
         onClick={() => handleSort(sortKey)}
       >
         <div className={`flex items-center gap-1 ${align === "right" ? "justify-end" : "justify-start"}`}>
-          <span className="truncate font-semibold">{children}</span>
+          <span className={`truncate font-semibold ${isActive ? "text-purple-700" : ""}`}>{children}</span>
           <div className="flex flex-col flex-shrink-0">
             <div
               className={`w-0 h-0 border-l-[3px] border-r-[3px] border-b-[3px] border-transparent transition-colors duration-200 ${
-                direction === "asc" ? "border-b-blue-600" : "border-b-gray-300"
+                direction === "asc" ? "border-b-purple-600" : "border-b-gray-300"
               }`}
               style={{ marginBottom: "1px" }}
             />
             <div
               className={`w-0 h-0 border-l-[3px] border-r-[3px] border-t-[3px] border-transparent transition-colors duration-200 ${
-                direction === "desc" ? "border-t-blue-600" : "border-t-gray-300"
+                direction === "desc" ? "border-t-purple-600" : "border-t-gray-300"
               }`}
             />
           </div>
@@ -134,8 +141,14 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
     )
   }
 
-  // チームランキングのデータを取得
+  // チームランキングのデータを取得（ソート適用）
   const getTeamRankingData = () => {
+    if (!teamStats || teamStats.length === 0) return []
+
+    // ソートを適用
+    const sortedData = sortConfig ? sortData(teamStats, sortConfig.key, sortConfig.direction) : teamStats
+
+    // 固定順位を付与（累計スコア順での順位）
     const rankedData = [...teamStats]
       .sort((a, b) => b.total_score - a.total_score)
       .map((team, index) => ({
@@ -143,8 +156,14 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
         fixed_rank: index + 1,
       }))
 
-    const sortedData = sortConfig ? sortData(rankedData, sortConfig.key, sortConfig.direction) : rankedData
-    return sortedData
+    // ソートされたデータに固定順位を追加
+    return sortedData.map((team) => {
+      const rankedTeam = rankedData.find((t) => t.id === team.id)
+      return {
+        ...team,
+        fixed_rank: rankedTeam?.fixed_rank || 0,
+      }
+    })
   }
 
   // スコアの表示形式を統一
@@ -177,6 +196,8 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
     }
   }
 
+  const displayData = getTeamRankingData()
+
   return (
     <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
       <CardHeader className="pb-3 sm:pb-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-lg">
@@ -186,7 +207,9 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
           </div>
           チームランキング
         </CardTitle>
-        <CardDescription className="text-xs sm:text-sm">チーム別の通算成績（累計スコア順）</CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
+          チーム別の通算成績（累計スコア順）
+        </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
         {/* 期間フィルター */}
@@ -222,7 +245,7 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
           </div>
         )}
 
-        {teamStats.length === 0 ? (
+        {displayData.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground text-sm bg-slate-50 rounded-xl">
             {dateFrom || dateTo ? "指定期間内に成績データがありません" : "成績データがありません"}
           </div>
@@ -262,7 +285,7 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {getTeamRankingData().map((team) => (
+                {displayData.map((team) => (
                   <TableRow
                     key={team.id}
                     className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200"

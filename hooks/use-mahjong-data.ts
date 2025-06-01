@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { teamOperations, playerOperations, gameResultOperations, statsOperations } from "@/lib/database"
 import type { Team, Player, PlayerStats, TeamStats } from "@/lib/supabase"
@@ -40,7 +40,7 @@ export function useMahjongData() {
   }
 
   // 統計データ読み込み
-  const loadStats = async (teamFilter?: string, dateFrom?: Date, dateTo?: Date) => {
+  const loadStats = useCallback(async (teamFilter?: string, dateFrom?: Date, dateTo?: Date) => {
     try {
       const [playerStatsData, teamStatsData] = await Promise.all([
         statsOperations.getPlayerStats(teamFilter, dateFrom, dateTo),
@@ -52,7 +52,7 @@ export function useMahjongData() {
     } catch (error) {
       console.error("統計データの読み込みに失敗しました:", error)
     }
-  }
+  }, [])
 
   // 初期データ読み込み
   useEffect(() => {
