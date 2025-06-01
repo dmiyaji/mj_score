@@ -67,20 +67,24 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
     children,
     sortKey,
     className = "",
+    align = "left",
   }: {
     children: React.ReactNode
     sortKey: string
     className?: string
+    align?: "left" | "right"
   }) => {
     const isActive = sortConfig?.key === sortKey
     const direction = isActive ? sortConfig.direction : null
 
     return (
       <TableHead
-        className={`cursor-pointer hover:bg-gradient-to-r hover:from-slate-50 hover:to-slate-100 select-none text-xs p-2 transition-all duration-200 ${className}`}
+        className={`cursor-pointer hover:bg-gradient-to-r hover:from-slate-50 hover:to-slate-100 select-none text-xs p-2 transition-all duration-200 ${
+          align === "right" ? "text-right" : "text-left"
+        } ${className}`}
         onClick={() => handleSort(sortKey)}
       >
-        <div className="flex items-center gap-1">
+        <div className={`flex items-center gap-1 ${align === "right" ? "justify-end" : "justify-start"}`}>
           <span className="truncate font-semibold">{children}</span>
           <div className="flex flex-col flex-shrink-0">
             <div
@@ -231,28 +235,28 @@ export default function TeamRanking({ teamStats, onLoadStats }: TeamRankingProps
                   <SortableHeader sortKey="name" className="w-16 sm:w-24">
                     チーム
                   </SortableHeader>
-                  <SortableHeader sortKey="total_score" className="text-right w-12 sm:w-16">
+                  <SortableHeader sortKey="total_score" className="w-12 sm:w-16" align="right">
                     累計
                   </SortableHeader>
-                  <SortableHeader sortKey="game_count" className="text-right w-8 sm:w-12">
+                  <SortableHeader sortKey="game_count" className="w-8 sm:w-12" align="right">
                     G数
                   </SortableHeader>
-                  <SortableHeader sortKey="average_score" className="text-right w-12 sm:w-16">
+                  <SortableHeader sortKey="average_score" className="w-12 sm:w-16" align="right">
                     平均
                   </SortableHeader>
-                  <SortableHeader sortKey="average_rank" className="text-right w-12 sm:w-16">
-                    順位
+                  <SortableHeader sortKey="average_rank" className="w-12 sm:w-16" align="right">
+                    平着
                   </SortableHeader>
-                  <SortableHeader sortKey="wins" className="text-right w-6 sm:w-8">
+                  <SortableHeader sortKey="wins" className="w-6 sm:w-8" align="right">
                     1着
                   </SortableHeader>
-                  <SortableHeader sortKey="seconds" className="text-right w-6 sm:w-8">
+                  <SortableHeader sortKey="seconds" className="w-6 sm:w-8" align="right">
                     2着
                   </SortableHeader>
-                  <SortableHeader sortKey="thirds" className="text-right w-6 sm:w-8">
+                  <SortableHeader sortKey="thirds" className="w-6 sm:w-8" align="right">
                     3着
                   </SortableHeader>
-                  <SortableHeader sortKey="fourths" className="text-right w-6 sm:w-8">
+                  <SortableHeader sortKey="fourths" className="w-6 sm:w-8" align="right">
                     4着
                   </SortableHeader>
                 </TableRow>

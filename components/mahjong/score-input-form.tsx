@@ -178,7 +178,7 @@ export default function ScoreInputForm({ teams, registeredPlayers, onDataUpdate 
           新しいゲーム結果を入力
         </CardTitle>
         <CardDescription className="text-xs sm:text-sm">
-          まずプレイヤーを4人選択してから、持ち点を入力してください（持ち点の合計は10万点、下2桁は省略して入力）
+          まずプレイヤーを4人選択してから、持ち点を入力してください（持ち点の合計は10万点、下2桁���省略して入力）
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 p-6">

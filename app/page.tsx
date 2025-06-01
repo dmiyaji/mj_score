@@ -39,7 +39,7 @@ export default function MahjongScoreManager() {
   >("input")
 
   // 公開ランキング用の状態
-  const [publicRankingTitle, setPublicRankingTitle] = useState("DAY 22")
+  const [publicRankingTitle, setPublicRankingTitle] = useState("DAY X")
   const [publicRankingDate, setPublicRankingDate] = useState<Date>(new Date())
   const [previousSessionDate, setPreviousSessionDate] = useState<Date | undefined>(undefined)
   const [isPublicRankingDialogOpen, setIsPublicRankingDialogOpen] = useState(false)

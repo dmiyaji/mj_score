@@ -144,7 +144,7 @@ export default function PublicRanking({
                 >
                   {/* 順位 */}
                   <div className="text-center font-bold text-slate-800">
-                    <span className={index < 3 ? "text-red-600" : ""}>{index + 1}</span>
+                    <span className={index > 3 ? "text-red-600" : ""}>{index + 1}</span>
                   </div>
 
                   {/* チーム名 */}
@@ -196,14 +196,6 @@ export default function PublicRanking({
               ))}
             </div>
           </div>
-        </div>
-
-        {/* フッター情報 */}
-        <div className="mt-8 text-center text-xs text-slate-500">
-          {previousSessionDate && (
-            <p className="mb-2">前節基準日: {format(previousSessionDate, "yyyy/M/d", { locale: ja })}</p>
-          )}
-          <p>Generated at {format(new Date(), "yyyy/M/d HH:mm", { locale: ja })}</p>
         </div>
       </div>
     </div>

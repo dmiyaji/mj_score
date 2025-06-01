@@ -1,4 +1,5 @@
 "use client"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -13,7 +14,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Users, User, Lock, History, Database, Share2, ExternalLink, CalendarIcon, X } from "lucide-react"
+import {
+  Users,
+  User,
+  History,
+  Database,
+  Share2,
+  ExternalLink,
+  CalendarIcon,
+  X,
+  Settings,
+  ChevronRight,
+  Lock,
+} from "lucide-react"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 
@@ -44,6 +57,8 @@ export default function Header({
   setIsPublicRankingDialogOpen,
   onGeneratePublicRanking,
 }: HeaderProps) {
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false)
+
   const DatePicker = ({
     date,
     onDateChange,
@@ -73,8 +88,36 @@ export default function Header({
     )
   }
 
+  // 管理者メニューのアイテム
+  const adminMenuItems = [
+    {
+      id: "playerManagement",
+      label: "プレイヤー管理",
+      icon: User,
+      description: "プレイヤーの追加・編集・削除",
+    },
+    {
+      id: "teamManagement",
+      label: "チーム管理",
+      icon: Users,
+      description: "チームの作成・編集・削除",
+    },
+    {
+      id: "gameHistory",
+      label: "過去の成績",
+      icon: History,
+      description: "ゲーム履歴の確認・削除",
+    },
+    {
+      id: "dataManagement",
+      label: "データ管理",
+      icon: Database,
+      description: "データのエクスポート・インポート",
+    },
+  ]
+
   return (
-    <div className="mb-6 sm:mb-8">
+    <div className="mb-6 sm:mb-8 relative">
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 sm:p-8">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-white rounded-xl shadow-lg border border-gray-100">
@@ -89,7 +132,10 @@ export default function Header({
               ナインリーグ成績入力
             </h1>
           </div>
-          <div className="flex gap-2">
+
+          {/* 右上のメニューエリア */}
+          <div className="flex gap-2 relative">
+            {/* 公開ランキングボタン */}
             <Dialog open={isPublicRankingDialogOpen} onOpenChange={setIsPublicRankingDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -98,14 +144,14 @@ export default function Header({
                   className="text-xs sm:text-sm h-10 border-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
                 >
                   <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  公開ランキング
+                  公開用ランキング生成
                 </Button>
               </DialogTrigger>
               <DialogContent className="w-[90vw] max-w-md bg-white/95 backdrop-blur-sm border border-white/20">
                 <DialogHeader>
                   <DialogTitle className="text-lg flex items-center gap-2">
                     <Share2 className="w-5 h-5 text-green-600" />
-                    公開ランキング生成
+                    公開用ランキング生成
                   </DialogTitle>
                   <DialogDescription className="text-sm">外部公開用のランキングページを生成します</DialogDescription>
                 </DialogHeader>
@@ -168,78 +214,109 @@ export default function Header({
                 </div>
               </DialogContent>
             </Dialog>
+
+            {/* 管理者メニューボタン */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)}
+              className="h-10 w-10 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-all duration-200"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
+        {/* 基本タブ（成績入力、プレイヤー、チーム） */}
         <div className="w-full overflow-x-auto">
           <Tabs value={currentView} onValueChange={onTabChange}>
-            <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full min-w-[700px] sm:min-w-0 bg-white/50 backdrop-blur-sm border border-white/20">
+            <TabsList className="grid grid-cols-3 w-full bg-white/50 backdrop-blur-sm border border-white/20">
               <TabsTrigger
                 value="input"
-                className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
+                className="text-xs sm:text-sm px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
               >
                 成績入力
               </TabsTrigger>
               <TabsTrigger
                 value="playerRanking"
-                className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
+                className="text-xs sm:text-sm px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
               >
-                プレイヤー
+                個人ランキング
               </TabsTrigger>
               <TabsTrigger
                 value="teamRanking"
-                className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
+                className="text-xs sm:text-sm px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
               >
-                チーム
-              </TabsTrigger>
-              <TabsTrigger
-                value="playerManagement"
-                className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
-              >
-                <div className="flex items-center gap-1">
-                  <User className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">プレイヤー管理</span>
-                  <span className="sm:hidden">P管理</span>
-                  <Lock className="w-2 h-2 sm:w-3 sm:h-3" />
-                </div>
-              </TabsTrigger>
-              <TabsTrigger
-                value="teamManagement"
-                className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
-              >
-                <div className="flex items-center gap-1">
-                  <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">チーム管理</span>
-                  <span className="sm:hidden">T管理</span>
-                  <Lock className="w-2 h-2 sm:w-3 sm:h-3" />
-                </div>
-              </TabsTrigger>
-              <TabsTrigger
-                value="gameHistory"
-                className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
-              >
-                <div className="flex items-center gap-1">
-                  <History className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">過去の成績</span>
-                  <span className="sm:hidden">履歴</span>
-                  <Lock className="w-2 h-2 sm:w-3 sm:h-3" />
-                </div>
-              </TabsTrigger>
-              <TabsTrigger
-                value="dataManagement"
-                className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
-              >
-                <div className="flex items-center gap-1">
-                  <Database className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">データ管理</span>
-                  <span className="sm:hidden">DB</span>
-                  <Lock className="w-2 h-2 sm:w-3 sm:h-3" />
-                </div>
+                チームランキング
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
       </div>
+
+      {/* 管理者メニューのスライドイン */}
+      <div
+        className={`absolute top-0 right-0 z-50 transition-all duration-300 ease-in-out ${
+          isAdminMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-4 min-w-[280px] mt-2">
+          {/* ヘッダー */}
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-semibold text-gray-700">管理者メニュー</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAdminMenuOpen(false)}
+              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 rounded-full"
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+
+          {/* メニューアイテム */}
+          <div className="space-y-2">
+            {adminMenuItems.map((item) => {
+              const Icon = item.icon
+              return (
+                <Button
+                  key={item.id}
+                  variant="ghost"
+                  onClick={() => {
+                    onTabChange(item.id)
+                    setIsAdminMenuOpen(false)
+                  }}
+                  className="w-full justify-start text-left p-3 h-auto hover:bg-gray-50 transition-all duration-200 group"
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="p-1.5 bg-gray-100 rounded-lg group-hover:bg-blue-100 transition-colors duration-200">
+                      <Icon className="w-3 h-3 text-gray-600 group-hover:text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-gray-700 group-hover:text-blue-700">{item.label}</div>
+                      <div className="text-[10px] text-gray-500 truncate">{item.description}</div>
+                    </div>
+                    <ChevronRight className="w-3 h-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-200" />
+                  </div>
+                </Button>
+              )
+            })}
+          </div>
+
+          {/* フッター */}
+          <div className="mt-4 pt-3 border-t border-gray-200">
+            <p className="text-[10px] text-gray-400 text-center">パスワード認証が必要です</p>
+          </div>
+        </div>
+      </div>
+
+      {/* オーバーレイ（メニューが開いているときの背景クリック用） */}
+      {isAdminMenuOpen && (
+        <div className="fixed inset-0 z-40 bg-black/10 backdrop-blur-sm" onClick={() => setIsAdminMenuOpen(false)} />
+      )}
     </div>
   )
 }
