@@ -3,11 +3,10 @@ frontend:
   phases:
     preBuild:
       commands:
-        - curl -f https://get.pnpm.io/v6.js | node -
-        - pnpm install
+        - yarn install
     build:
       commands:
-        - pnpm run build
+        - yarn run build
   artifacts:
     baseDirectory: .next
     files:
