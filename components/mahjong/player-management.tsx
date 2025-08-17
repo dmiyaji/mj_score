@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { User, UserPlus, Edit, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { playerOperations } from "@/lib/database"
+import { playerApi } from "@/lib/api-client"
 import type { Team, Player } from "@/lib/supabase"
 
 interface PlayerManagementProps {
@@ -55,7 +55,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     const teamId = newPlayerTeamId || (teams.length > 0 ? teams[0].id : "")
 
     try {
-      await playerOperations.create(newPlayerName.trim(), teamId)
+      await playerApi.create(newPlayerName.trim(), teamId)
       onDataUpdate()
       setNewPlayerName("")
       setNewPlayerTeamId("")
@@ -95,7 +95,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     }
 
     try {
-      await playerOperations.update(id, { name: newName.trim() })
+      await playerApi.update(id, { name: newName.trim() })
       onDataUpdate()
       setEditingPlayer(null)
       toast({
@@ -114,7 +114,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
   // プレイヤーを削除
   const deletePlayer = async (id: string) => {
     try {
-      await playerOperations.delete(id)
+      await playerApi.delete(id)
       onDataUpdate()
       toast({
         title: "削除完了",
@@ -132,7 +132,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
   // プレイヤーのチームを変更
   const updatePlayerTeam = async (playerId: string, teamId: string) => {
     try {
-      await playerOperations.update(playerId, { team_id: teamId })
+      await playerApi.update(playerId, { team_id: teamId })
       onDataUpdate()
       toast({
         title: "更新完了",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { teamOperations, playerOperations, gameResultOperations, statsOperations } from "@/lib/database"
+import { teamApi, playerApi, gameResultApi, statsApi } from "@/lib/api-client"
 import type { Team, Player, PlayerStats, TeamStats } from "@/lib/supabase"
 
 export function useMahjongData() {
@@ -19,9 +19,9 @@ export function useMahjongData() {
     setLoading(true)
     try {
       const [teamsData, playersData, gameResultsData] = await Promise.all([
-        teamOperations.getAll(),
-        playerOperations.getAll(),
-        gameResultOperations.getAll(),
+        teamApi.getAll(),
+        playerApi.getAll(),
+        gameResultApi.getAll(),
       ])
 
       setTeams(teamsData)
@@ -43,8 +43,8 @@ export function useMahjongData() {
   const loadStats = async (teamFilter?: string, dateFrom?: Date, dateTo?: Date) => {
     try {
       const [playerStatsData, teamStatsData] = await Promise.all([
-        statsOperations.getPlayerStats(teamFilter, dateFrom, dateTo),
-        statsOperations.getTeamStats(dateFrom, dateTo),
+        statsApi.getPlayerStats(teamFilter, dateFrom, dateTo),
+        statsApi.getTeamStats(dateFrom, dateTo),
       ])
 
       setPlayerStats(playerStatsData)

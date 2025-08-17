@@ -1,5 +1,5 @@
 import {
-  supabase,
+  db,
   type Team,
   type Player,
   type GameResult,
@@ -7,38 +7,68 @@ import {
   type PlayerStats,
   type TeamStats,
 } from "./supabase"
+import { v4 as uuidv4 } from 'uuid'
+
+console.log('DB Host:', process.env.DATABASE_HOST); // これを追加
 
 // チーム関連の操作
 export const teamOperations = {
   // 全チーム取得
   async getAll(): Promise<Team[]> {
-    const { data, error } = await supabase.from("teams").select("*").order("name")
-
-    if (error) throw error
-    return data || []
+    const [rows] = await db.execute('SELECT id, name, color, created_at, updated_at FROM teams ORDER BY name')
+    return rows as Team[]
   },
 
   // チーム作成
   async create(name: string, color: string): Promise<Team> {
-    const { data, error } = await supabase.from("teams").insert({ name, color }).select().single()
-
-    if (error) throw error
-    return data
+    const id = uuidv4()
+    const now = new Date();
+    const mysqlDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
+    
+    await db.execute(
+      'INSERT INTO teams (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [id, name, color, mysqlDatetime, mysqlDatetime]
+    )
+    
+    return {
+      id,
+      name,
+      color,
+      created_at: mysqlDatetime,
+      updated_at: mysqlDatetime
+    }
   },
 
   // チーム更新を追加
   async update(id: string, updates: Partial<Pick<Team, "name" | "color">>): Promise<Team> {
-    const { data, error } = await supabase.from("teams").update(updates).eq("id", id).select().single()
-
-    if (error) throw error
-    return data
+    const now = new Date().toISOString()
+    const fields = []
+    const values = []
+    
+    if (updates.name !== undefined) {
+      fields.push('name = ?')
+      values.push(updates.name)
+    }
+    if (updates.color !== undefined) {
+      fields.push('color = ?')
+      values.push(updates.color)
+    }
+    
+    fields.push('updated_at = ?')
+    values.push(now, id)
+    
+    await db.execute(
+      `UPDATE teams SET ${fields.join(', ')} WHERE id = ?`,
+      values
+    )
+    
+    const [rows] = await db.execute('SELECT * FROM teams WHERE id = ?', [id])
+    return (rows as Team[])[0]
   },
 
   // チーム削除
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from("teams").delete().eq("id", id)
-
-    if (error) throw error
+    await db.execute('DELETE FROM teams WHERE id = ?', [id])
   },
 }
 
@@ -46,43 +76,71 @@ export const teamOperations = {
 export const playerOperations = {
   // 全プレイヤー取得（チーム情報含む）
   async getAll(): Promise<Player[]> {
-    const { data, error } = await supabase
-      .from("players")
-      .select(`
-        *,
-        teams (
-          id,
-          name,
-          color
-        )
-      `)
-      .order("name")
-
-    if (error) throw error
-    return data || []
+    const [rows] = await db.execute(`
+      SELECT 
+        p.id, p.name, p.team_id, p.created_at, p.updated_at,
+        JSON_OBJECT('id', t.id, 'name', t.name, 'color', t.color) as teams
+      FROM players p
+      LEFT JOIN teams t ON p.team_id = t.id
+      ORDER BY p.name
+    `)
+    
+    return (rows as any[]).map(row => ({
+      ...row,
+      teams: row.teams || null
+    })) as Player[]
   },
 
   // プレイヤー作成
   async create(name: string, teamId: string): Promise<Player> {
-    const { data, error } = await supabase.from("players").insert({ name, team_id: teamId }).select().single()
-
-    if (error) throw error
-    return data
+    const id = uuidv4()
+    const now = new Date();
+    const mysqlDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
+    
+    await db.execute(
+      'INSERT INTO players (id, name, team_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [id, name, teamId, mysqlDatetime, mysqlDatetime]
+    )
+    
+    return {
+      id,
+      name,
+      team_id: teamId,
+      created_at: mysqlDatetime,
+      updated_at: mysqlDatetime
+    }
   },
 
   // プレイヤー更新
   async update(id: string, updates: Partial<Pick<Player, "name" | "team_id">>): Promise<Player> {
-    const { data, error } = await supabase.from("players").update(updates).eq("id", id).select().single()
-
-    if (error) throw error
-    return data
+    const now = new Date().toISOString()
+    const fields = []
+    const values = []
+    
+    if (updates.name !== undefined) {
+      fields.push('name = ?')
+      values.push(updates.name)
+    }
+    if (updates.team_id !== undefined) {
+      fields.push('team_id = ?')
+      values.push(updates.team_id)
+    }
+    
+    fields.push('updated_at = ?')
+    values.push(now, id)
+    
+    await db.execute(
+      `UPDATE players SET ${fields.join(', ')} WHERE id = ?`,
+      values
+    )
+    
+    const [rows] = await db.execute('SELECT * FROM players WHERE id = ?', [id])
+    return (rows as Player[])[0]
   },
 
   // プレイヤー削除
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from("players").delete().eq("id", id)
-
-    if (error) throw error
+    await db.execute('DELETE FROM players WHERE id = ?', [id])
   },
 }
 
@@ -90,23 +148,36 @@ export const playerOperations = {
 export const gameResultOperations = {
   // 全ゲーム結果取得（プレイヤー情報含む）
   async getAll(): Promise<(GameResult & { player_game_results: (PlayerGameResult & { players: Player })[] })[]> {
-    const { data, error } = await supabase
-      .from("game_results")
-      .select(`
-        *,
-        player_game_results (
-          *,
-          players (
-            id,
-            name,
-            team_id
-          )
-        )
-      `)
-      .order("game_date", { ascending: false })
-
-    if (error) throw error
-    return data || []
+    const [gameRows] = await db.execute(`
+      SELECT id, game_date, created_at, updated_at
+      FROM game_results
+      ORDER BY game_date DESC
+    `)
+    
+    const results = []
+    for (const game of gameRows as GameResult[]) {
+      const [playerRows] = await db.execute(`
+        SELECT 
+          pgr.id, pgr.game_result_id, pgr.player_id, pgr.points, pgr.score, pgr.rank, pgr.created_at,
+          JSON_OBJECT('id', p.id, 'name', p.name, 'team_id', p.team_id) as players
+        FROM player_game_results pgr
+        JOIN players p ON pgr.player_id = p.id
+        WHERE pgr.game_result_id = ?
+        ORDER BY pgr.rank
+      `, [game.id])
+      
+      const player_game_results = (playerRows as any[]).map(row => ({
+        ...row,
+        players: row.players
+      })) as (PlayerGameResult & { players: Player })[]
+      
+      results.push({
+        ...game,
+        player_game_results
+      })
+    }
+    
+    return results
   },
 
   // ゲーム結果作成
@@ -119,35 +190,38 @@ export const gameResultOperations = {
       rank: number
     }>,
   ): Promise<GameResult> {
+    const gameId = uuidv4()
+    const now = new Date();
+    const mysqlDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
+    
     // ゲーム結果を作成
-    const { data: gameResult, error: gameError } = await supabase
-      .from("game_results")
-      .insert({ game_date: gameDate })
-      .select()
-      .single()
-
-    if (gameError) throw gameError
-
+    await db.execute(
+      'INSERT INTO game_results (id, game_date, created_at, updated_at) VALUES (?, ?, ?, ?)',
+      [gameId, gameDate, mysqlDatetime, mysqlDatetime]
+    )
+    
     // プレイヤー個別結果を作成
-    const playerGameResults = playerResults.map((result) => ({
-      game_result_id: gameResult.id,
-      player_id: result.playerId,
-      points: result.points,
-      score: result.score,
-      rank: result.rank,
-    }))
-
-    const { error: playerError } = await supabase.from("player_game_results").insert(playerGameResults)
-
-    if (playerError) throw playerError
-    return gameResult
+    for (const result of playerResults) {
+      const playerGameResultId = uuidv4()
+      await db.execute(
+        'INSERT INTO player_game_results (id, game_result_id, player_id, points, score, `rank`, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [playerGameResultId, gameId, result.playerId, result.points, result.score, result.rank, mysqlDatetime]
+      )
+    }
+    
+    return {
+      id: gameId,
+      game_date: gameDate,
+      created_at: mysqlDatetime,
+      updated_at: mysqlDatetime
+    }
   },
 
   // ゲーム結果削除
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from("game_results").delete().eq("id", id)
-
-    if (error) throw error
+    // player_game_results を先に削除（外部キー制約のため）
+    await db.execute('DELETE FROM player_game_results WHERE game_result_id = ?', [id])
+    await db.execute('DELETE FROM game_results WHERE id = ?', [id])
   },
 }
 
@@ -155,56 +229,56 @@ export const gameResultOperations = {
 export const statsOperations = {
   // プレイヤー統計取得（期間フィルター対応）
   async getPlayerStats(teamFilter?: string, dateFrom?: Date, dateTo?: Date): Promise<PlayerStats[]> {
-    let query = supabase.from("player_game_results").select(`
-        players!inner (
-          id,
-          name,
-          team_id,
-          teams (
-            name,
-            color
-          )
-        ),
-        score,
-        rank,
-        game_results!inner (
-          game_date
-        )
-      `)
+    let whereConditions = []
+    let queryParams: any[] = []
 
     if (teamFilter && teamFilter !== "all") {
-      query = query.eq("players.team_id", teamFilter)
+      whereConditions.push("p.team_id = ?")
+      queryParams.push(teamFilter)
     }
 
-    // 期間フィルターを追加
     if (dateFrom) {
-      const fromDateString = dateFrom.toISOString().split("T")[0] + "T00:00:00.000Z"
-      query = query.gte("game_results.game_date", fromDateString)
+      whereConditions.push("gr.game_date >= ?")
+      queryParams.push(dateFrom.toISOString().split("T")[0] + "T00:00:00.000Z")
     }
 
     if (dateTo) {
-      const toDateString = dateTo.toISOString().split("T")[0] + "T23:59:59.999Z"
-      query = query.lte("game_results.game_date", toDateString)
+      whereConditions.push("gr.game_date <= ?")
+      queryParams.push(dateTo.toISOString().split("T")[0] + "T23:59:59.999Z")
     }
 
-    const { data, error } = await query
+    const whereClause = whereConditions.length > 0 ? "WHERE " + whereConditions.join(" AND ") : ""
 
-    if (error) throw error
+    const [rows] = await db.execute(`
+      SELECT 
+        p.id,
+        p.name,
+        p.team_id,
+        COALESCE(t.name, '未所属') as team_name,
+        COALESCE(t.color, 'bg-gray-100 text-gray-800') as team_color,
+        pgr.score,
+        pgr.rank
+      FROM player_game_results pgr
+      JOIN players p ON pgr.player_id = p.id
+      LEFT JOIN teams t ON p.team_id = t.id
+      JOIN game_results gr ON pgr.game_result_id = gr.id
+      ${whereClause}
+      ORDER BY p.name
+    `, queryParams)
 
     // データを集計
     const playerStatsMap = new Map<string, PlayerStats>()
 
-    data?.forEach((result: any) => {
-      const player = result.players
-      const playerId = player.id
+    ;(rows as any[]).forEach((result: any) => {
+      const playerId = result.id
 
       if (!playerStatsMap.has(playerId)) {
         playerStatsMap.set(playerId, {
           id: playerId,
-          name: player.name,
-          team_id: player.team_id,
-          team_name: player.teams?.name || "未所属",
-          team_color: player.teams?.color || "bg-gray-100 text-gray-800",
+          name: result.name,
+          team_id: result.team_id,
+          team_name: result.team_name,
+          team_color: result.team_color,
           total_score: 0,
           game_count: 0,
           average_score: 0,
@@ -241,54 +315,50 @@ export const statsOperations = {
 
   // チーム統計取得（期間フィルター対応）
   async getTeamStats(dateFrom?: Date, dateTo?: Date): Promise<TeamStats[]> {
-    let query = supabase
-      .from("player_game_results")
-      .select(`
-        players!inner (
-          team_id,
-          teams!inner (
-            id,
-            name,
-            color
-          )
-        ),
-        score,
-        rank,
-        game_results!inner (
-          game_date
-        )
-      `)
-      .not("players.teams.id", "eq", "00000000-0000-0000-0000-000000000001") // 未所属チームを除外
+    let whereConditions = ["t.name != '未所属'"] // 未所属チームを除外
+    let queryParams: any[] = []
 
-    // 期間フィルターを追加
     if (dateFrom) {
-      const fromDateString = dateFrom.toISOString().split("T")[0] + "T00:00:00.000Z"
-      query = query.gte("game_results.game_date", fromDateString)
+      whereConditions.push("gr.game_date >= ?")
+      queryParams.push(dateFrom.toISOString().split("T")[0] + "T00:00:00.000Z")
     }
 
     if (dateTo) {
-      const toDateString = dateTo.toISOString().split("T")[0] + "T23:59:59.999Z"
-      query = query.lte("game_results.game_date", toDateString)
+      whereConditions.push("gr.game_date <= ?")
+      queryParams.push(dateTo.toISOString().split("T")[0] + "T23:59:59.999Z")
     }
 
-    const { data, error } = await query
+    const whereClause = "WHERE " + whereConditions.join(" AND ")
 
-    if (error) throw error
+    const [rows] = await db.execute(`
+      SELECT 
+        t.id as team_id,
+        t.name as team_name,
+        t.color as team_color,
+        p.id as player_id,
+        pgr.score,
+        pgr.rank
+      FROM player_game_results pgr
+      JOIN players p ON pgr.player_id = p.id
+      JOIN teams t ON p.team_id = t.id
+      JOIN game_results gr ON pgr.game_result_id = gr.id
+      ${whereClause}
+      ORDER BY t.name
+    `, queryParams)
 
     // データを集計
     const teamStatsMap = new Map<string, TeamStats>()
     const playerCountMap = new Map<string, Set<string>>()
 
-    data?.forEach((result: any) => {
-      const team = result.players.teams
-      const teamId = team.id
-      const playerId = result.players.id || "unknown"
+    ;(rows as any[]).forEach((result: any) => {
+      const teamId = result.team_id
+      const playerId = result.player_id
 
       if (!teamStatsMap.has(teamId)) {
         teamStatsMap.set(teamId, {
           id: teamId,
-          name: team.name,
-          color: team.color,
+          name: result.team_name,
+          color: result.team_color,
           total_score: 0,
           game_count: 0,
           player_count: 0,

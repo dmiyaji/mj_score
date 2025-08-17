@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { gameResultOperations } from "@/lib/database"
+import { gameResultApi } from "@/lib/api-client"
 import type { Team, Player } from "@/lib/supabase"
 
 interface ScoreInputFormProps {
@@ -137,7 +137,10 @@ export default function ScoreInputForm({ teams, registeredPlayers, onDataUpdate 
         }
       })
 
-      await gameResultOperations.create(new Date().toISOString(), playerResults)
+      const now = new Date();
+      const mysqlDate = now.toISOString().slice(0, 10);
+
+      await gameResultApi.create(mysqlDate, playerResults)
       onDataUpdate()
 
       setPlayers([

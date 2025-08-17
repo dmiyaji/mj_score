@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Database, Download, Upload, FileText, AlertTriangle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { exportOperations, importOperations } from "@/lib/database"
+import { exportApi, importApi } from "@/lib/api-client"
 
 interface DataManagementProps {
   onDataUpdate: () => void
@@ -30,7 +30,7 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
     setIsExporting(true)
     try {
       if (exportFormat === "json") {
-        const data = await exportOperations.exportAllData()
+        const data = await exportApi.exportAllData()
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
         const url = URL.createObjectURL(blob)
         const a = document.createElement("a")
@@ -41,7 +41,7 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
       } else {
-        const csvData = await exportOperations.exportToCSV(exportTable)
+        const csvData = await exportApi.exportToCSV(exportTable)
         const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" })
         const url = URL.createObjectURL(blob)
         const a = document.createElement("a")
@@ -87,23 +87,23 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
         const data = JSON.parse(fileContent)
 
         if (importType === "teams" && data.teams) {
-          await importOperations.importTeams(data.teams)
+          await importApi.importTeams(data.teams)
         } else if (importType === "players" && data.players) {
-          await importOperations.importPlayers(data.players)
+          await importApi.importPlayers(data.players)
         } else if (importType === "gameResults" && data.gameResults) {
-          await importOperations.importGameResults(data.gameResults)
+          await importApi.importGameResults(data.gameResults)
         } else {
           throw new Error("インポートするデータが見つかりません")
         }
       } else if (importFile.name.endsWith(".csv")) {
-        const parsedData = importOperations.parseCSV(fileContent, importType)
+        const result = await importApi.parseCSVAndImport(fileContent, importType)
 
         if (importType === "teams") {
-          await importOperations.importTeams(parsedData)
+          // Data already imported by parseCSVAndImport
         } else if (importType === "players") {
-          await importOperations.importPlayers(parsedData)
+          // Data already imported by parseCSVAndImport
         } else if (importType === "gameResults") {
-          await importOperations.importGameResults(parsedData)
+          // Data already imported by parseCSVAndImport
         }
       } else {
         throw new Error("サポートされていないファイル形式です")

@@ -1,9 +1,19 @@
-import { createClient } from "@supabase/supabase-js"
+import mysql from 'mysql2/promise'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// MySQL connection configuration
+const dbConfig = {
+  host: process.env.DATABASE_HOST || 'localhost',
+  port: parseInt(process.env.DATABASE_PORT || '3306'),
+  user: process.env.DATABASE_USER || 'root',
+  password: process.env.DATABASE_PASSWORD || '',
+  database: process.env.DATABASE_NAME || 'mahjong_score',
+  timezone: '+00:00'
+}
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+console.log(dbConfig);
+
+// Create MySQL connection pool
+export const db = mysql.createPool(dbConfig)
 
 // データベースの型定義
 export interface Team {

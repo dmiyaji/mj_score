@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  nextjs:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=mysql://root:hogehoge@db:3306/mj_score
+      - DATABASE_HOST=db
+      - DATABASE_USER=miyaji
+      - DATABASE_PASSWORD=hogehoge
+      - DATABASE_NAME=mj_score
+      - DATABASE_PORT=3306
+
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: hogehoge
+      MYSQL_DATABASE: mj_score
+      MYSQL_USER: miyaji
+      MYSQL_PASSWORD: hogehoge
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+
+volumes:
+  db-data:

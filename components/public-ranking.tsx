@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
-import { statsOperations } from "@/lib/database"
+import { statsApi } from "@/lib/api-client"
 import type { TeamStats } from "@/lib/supabase"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
@@ -35,12 +35,12 @@ export default function PublicRanking({
       setLoading(true)
 
       // 最新の統計データを取得
-      const currentStats = await statsOperations.getTeamStats()
+      const currentStats = await statsApi.getTeamStats()
 
       // 前節のデータを取得（前節日付が指定されている場合）
       let previousStats: TeamStats[] = []
       if (previousSessionDate) {
-        previousStats = await statsOperations.getTeamStats(undefined, previousSessionDate)
+        previousStats = await statsApi.getTeamStats(undefined, previousSessionDate)
       }
 
       // データを結合して計算

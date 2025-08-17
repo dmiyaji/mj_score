@@ -7,7 +7,7 @@ import { History, Trash2, Calendar, Trophy, Medal, Star, Award } from "lucide-re
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
-import { gameResultOperations } from "@/lib/database"
+import { gameResultApi } from "@/lib/api-client"
 import type { Team, Player, GameResult, PlayerGameResult } from "@/lib/supabase"
 
 interface GameHistoryProps {
@@ -23,7 +23,7 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, onD
   // ゲーム結果を削除
   const deleteGameResult = async (id: string) => {
     try {
-      await gameResultOperations.delete(id)
+      await gameResultApi.delete(id)
       onDataUpdate()
       toast({
         title: "削除完了",

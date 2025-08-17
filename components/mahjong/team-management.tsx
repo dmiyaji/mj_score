@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Users, UserPlus, Edit, Trash2, Palette } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { teamOperations } from "@/lib/database"
+import { teamApi } from "@/lib/api-client"
 import type { Team, Player } from "@/lib/supabase"
 
 interface TeamManagementProps {
@@ -67,7 +67,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
     }
 
     try {
-      await teamOperations.create(newTeamName.trim(), newTeamColor)
+      await teamApi.create(newTeamName.trim(), newTeamColor)
       onDataUpdate()
       setNewTeamName("")
       setNewTeamColor(TEAM_COLORS[0].value)
@@ -107,7 +107,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
     }
 
     try {
-      await teamOperations.update(id, { name: name.trim(), color })
+      await teamApi.update(id, { name: name.trim(), color })
       onDataUpdate()
       setEditingTeam(null)
       toast({
@@ -136,7 +136,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
     }
 
     try {
-      await teamOperations.delete(id)
+      await teamApi.delete(id)
       onDataUpdate()
       toast({
         title: "削除完了",
