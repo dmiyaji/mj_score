@@ -35,12 +35,15 @@ CREATE TABLE player_game_results (
     id VARCHAR(36) PRIMARY KEY,
     game_result_id VARCHAR(36) NOT NULL,
     player_id VARCHAR(36) NOT NULL,
-    points INT NOT NULL,
-    score DECIMAL(10,2) NOT NULL,
+    team_id VARCHAR(36),
+    score INT NOT NULL,
+    points DECIMAL(10,2) NOT NULL,
+    penalty_points DECIMAL(10,2) DEFAULT 0,
     `rank` INT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (game_result_id) REFERENCES game_results(id) ON DELETE CASCADE,
-    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL
 );
 
 -- Create indexes for better performance

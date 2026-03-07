@@ -6,12 +6,12 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - .:/app
-      - /app/node_modules
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
     depends_on:
       - db
     environment:
-      - DATABASE_URL=mysql://root:hogehoge@db:3306/mj_score
+      - DATABASE_URL=mysql://miyaji:hogehoge@db:3306/mj_score
       - DATABASE_HOST=db
       - DATABASE_USER=miyaji
       - DATABASE_PASSWORD=hogehoge

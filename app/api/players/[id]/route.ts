@@ -4,11 +4,12 @@ import { playerOperations } from '@/lib/database'
 // PUT /api/players/[id] - Update a player
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const updates = await request.json()
-    const player = await playerOperations.update(params.id, updates)
+    const player = await playerOperations.update(id, updates)
     return NextResponse.json(player)
   } catch (error) {
     console.error('Error updating player:', error)
@@ -22,10 +23,11 @@ export async function PUT(
 // DELETE /api/players/[id] - Delete a player
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await playerOperations.delete(params.id)
+    const { id } = await params
+    await playerOperations.delete(id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting player:', error)

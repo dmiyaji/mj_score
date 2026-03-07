@@ -8,11 +8,14 @@ export async function GET(request: NextRequest) {
     const teamFilter = searchParams.get('teamFilter') || undefined
     const dateFromStr = searchParams.get('dateFrom')
     const dateToStr = searchParams.get('dateTo')
-    
+    const seasonId = searchParams.get('seasonId') || undefined
+    const stageStr = searchParams.get('stage')
+    const stage = (stageStr === 'REGULAR' || stageStr === 'FINAL') ? stageStr : undefined
+
     const dateFrom = dateFromStr ? new Date(dateFromStr) : undefined
     const dateTo = dateToStr ? new Date(dateToStr) : undefined
 
-    const playerStats = await statsOperations.getPlayerStats(teamFilter, dateFrom, dateTo)
+    const playerStats = await statsOperations.getPlayerStats(teamFilter, dateFrom, dateTo, seasonId, stage)
     return NextResponse.json(playerStats)
   } catch (error) {
     console.error('Error fetching player stats:', error)

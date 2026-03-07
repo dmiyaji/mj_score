@@ -7,11 +7,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const dateFromStr = searchParams.get('dateFrom')
     const dateToStr = searchParams.get('dateTo')
-    
+    const seasonId = searchParams.get('seasonId') || undefined
+    const stageStr = searchParams.get('stage')
+    const stage = (stageStr === 'REGULAR' || stageStr === 'FINAL') ? stageStr : undefined
+
     const dateFrom = dateFromStr ? new Date(dateFromStr) : undefined
     const dateTo = dateToStr ? new Date(dateToStr) : undefined
 
-    const teamStats = await statsOperations.getTeamStats(dateFrom, dateTo)
+    const teamStats = await statsOperations.getTeamStats(dateFrom, dateTo, seasonId, stage)
     return NextResponse.json(teamStats)
   } catch (error) {
     console.error('Error fetching team stats:', error)

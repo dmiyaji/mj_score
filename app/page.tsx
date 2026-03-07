@@ -11,10 +11,11 @@ import PlayerManagement from "@/components/mahjong/player-management"
 import TeamManagement from "@/components/mahjong/team-management"
 import GameHistory from "@/components/mahjong/game-history"
 import DataManagement from "@/components/mahjong/data-management"
+import SeasonManagement from "@/components/mahjong/season-management"
 import PublicRanking from "@/components/public-ranking"
 
 export default function MahjongScoreManager() {
-  const { teams, registeredPlayers, gameResults, playerStats, teamStats, loading, loadData, loadStats } =
+  const { seasons, teams, registeredPlayers, gameResults, playerStats, teamStats, loading, loadData, loadStats } =
     useMahjongData()
 
   const {
@@ -35,6 +36,7 @@ export default function MahjongScoreManager() {
     | "teamManagement"
     | "gameHistory"
     | "dataManagement"
+    | "seasonManagement"
     | "publicRanking"
   >("input")
 
@@ -130,14 +132,14 @@ export default function MahjongScoreManager() {
 
         {/* メインコンテンツ */}
         {currentView === "input" && (
-          <ScoreInputForm teams={teams} registeredPlayers={registeredPlayers} onDataUpdate={loadData} />
+          <ScoreInputForm teams={teams} registeredPlayers={registeredPlayers} seasons={seasons} onDataUpdate={loadData} />
         )}
 
         {currentView === "playerRanking" && (
-          <PlayerRanking teams={teams} playerStats={playerStats} onLoadStats={loadStats} />
+          <PlayerRanking teams={teams} playerStats={playerStats} onLoadStats={loadStats} seasons={seasons} />
         )}
 
-        {currentView === "teamRanking" && <TeamRanking teamStats={teamStats} onLoadStats={loadStats} />}
+        {currentView === "teamRanking" && <TeamRanking teamStats={teamStats} onLoadStats={loadStats} seasons={seasons} />}
 
         {currentView === "playerManagement" && (
           <PlayerManagement teams={teams} registeredPlayers={registeredPlayers} onDataUpdate={loadData} />
@@ -152,11 +154,14 @@ export default function MahjongScoreManager() {
             teams={teams}
             registeredPlayers={registeredPlayers}
             gameResults={gameResults}
+            seasons={seasons}
             onDataUpdate={loadData}
           />
         )}
 
         {currentView === "dataManagement" && <DataManagement onDataUpdate={loadData} />}
+
+        {currentView === "seasonManagement" && <SeasonManagement seasons={seasons} onDataUpdate={loadData} />}
       </div>
     </div>
   )

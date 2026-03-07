@@ -15,7 +15,7 @@ async function apiRequest<T>(
   }
 
   const response = await fetch(url, config)
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
     throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
@@ -78,6 +78,39 @@ export const playerApi = {
   },
 }
 
+// Season operations
+export const seasonApi = {
+  async getAll(): Promise<any[]> {
+    return apiRequest<any[]>('/seasons')
+  },
+
+  async create(name: string): Promise<any> {
+    return apiRequest<any>('/seasons', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    })
+  },
+
+  async setActive(id: string): Promise<void> {
+    await apiRequest(`/seasons/${id}/active`, {
+      method: 'PUT',
+    })
+  },
+
+  async setStage(id: string, stage: 'REGULAR' | 'FINAL'): Promise<void> {
+    await apiRequest(`/seasons/${id}/stage`, {
+      method: 'PUT',
+      body: JSON.stringify({ stage }),
+    })
+  },
+
+  async delete(id: string): Promise<void> {
+    await apiRequest(`/seasons/${id}`, {
+      method: 'DELETE',
+    })
+  },
+}
+
 // Game result operations
 export const gameResultApi = {
   async getAll(): Promise<(GameResult & { player_game_results: any[] })[]> {
@@ -88,14 +121,38 @@ export const gameResultApi = {
     gameDate: string,
     playerResults: Array<{
       playerId: string
-      points: number
+      teamId: string
       score: number
+      points: number
+      penaltyPoints?: number
       rank: number
-    }>
+    }>,
+    seasonId?: string,
+    stage?: 'REGULAR' | 'FINAL'
   ): Promise<GameResult> {
     return apiRequest<GameResult>('/game-results', {
       method: 'POST',
-      body: JSON.stringify({ gameDate, playerResults }),
+      body: JSON.stringify({ gameDate, playerResults, seasonId, stage }),
+    })
+  },
+
+  async update(
+    id: string,
+    playerResults: Array<{
+      id: string
+      playerId: string
+      teamId: string
+      score: number
+      points: number
+      penaltyPoints?: number
+      rank: number
+    }>,
+    seasonId?: string,
+    stage?: 'REGULAR' | 'FINAL'
+  ): Promise<void> {
+    return apiRequest<void>(`/game-results/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ playerResults, seasonId, stage }),
     })
   },
 
@@ -108,21 +165,25 @@ export const gameResultApi = {
 
 // Statistics operations
 export const statsApi = {
-  async getPlayerStats(teamFilter?: string, dateFrom?: Date, dateTo?: Date): Promise<PlayerStats[]> {
+  async getPlayerStats(teamFilter?: string, dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: 'REGULAR' | 'FINAL'): Promise<PlayerStats[]> {
     const params = new URLSearchParams()
     if (teamFilter) params.append('teamFilter', teamFilter)
     if (dateFrom) params.append('dateFrom', dateFrom.toISOString())
     if (dateTo) params.append('dateTo', dateTo.toISOString())
-    
+    if (seasonId) params.append('seasonId', seasonId)
+    if (stage) params.append('stage', stage)
+
     const query = params.toString() ? `?${params.toString()}` : ''
     return apiRequest<PlayerStats[]>(`/stats/players${query}`)
   },
 
-  async getTeamStats(dateFrom?: Date, dateTo?: Date): Promise<TeamStats[]> {
+  async getTeamStats(dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: 'REGULAR' | 'FINAL'): Promise<TeamStats[]> {
     const params = new URLSearchParams()
     if (dateFrom) params.append('dateFrom', dateFrom.toISOString())
     if (dateTo) params.append('dateTo', dateTo.toISOString())
-    
+    if (seasonId) params.append('seasonId', seasonId)
+    if (stage) params.append('stage', stage)
+
     const query = params.toString() ? `?${params.toString()}` : ''
     return apiRequest<TeamStats[]>(`/stats/teams${query}`)
   },
@@ -163,8 +224,10 @@ export const importApi = {
     game_date: string
     players: Array<{
       player_name: string
-      points: number
+      team_id: string
       score: number
+      points: number
+      penalty_points?: number
       rank: number
     }>
   }>) {

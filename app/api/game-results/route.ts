@@ -19,10 +19,19 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { gameDate, playerResults } = await request.json()
-    
+
     if (!gameDate || !playerResults || !Array.isArray(playerResults)) {
       return NextResponse.json(
         { error: 'gameDate and playerResults array are required' },
+        { status: 400 }
+      )
+    }
+
+    // teamIdの要求は各プレイヤーに
+    const hasMissingTeamId = playerResults.some(pr => !pr.teamId);
+    if (hasMissingTeamId) {
+      return NextResponse.json(
+        { error: 'チームIDはすべてのプレイヤー結果に必須です' },
         { status: 400 }
       )
     }
