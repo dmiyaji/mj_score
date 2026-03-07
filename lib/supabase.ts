@@ -33,19 +33,33 @@ export interface Player {
   teams?: Team
 }
 
+export interface Season {
+  id: string
+  name: string
+  is_active: boolean
+  current_stage: 'REGULAR' | 'FINAL'
+  created_at: string
+  updated_at: string
+}
+
 export interface GameResult {
   id: string
   game_date: string
+  season_id: string
+  stage: 'REGULAR' | 'FINAL'
   created_at: string
   updated_at: string
+  seasons?: Season
 }
 
 export interface PlayerGameResult {
   id: string
   game_result_id: string
   player_id: string
-  points: number
-  score: number
+  team_id: string | null
+  score: number           // 持ち点 (以前のpoints)
+  points: number          // ランキング用ポイント (以前のscore)
+  penalty_points: number
   rank: number
   created_at: string
   players?: Player
@@ -59,9 +73,9 @@ export interface PlayerStats {
   team_id: string | null
   team_name: string
   team_color: string
-  total_score: number
+  total_points: number    // 合計ポイント
   game_count: number
-  average_score: number
+  average_points: number  // 平均ポイント
   average_rank: number
   wins: number
   seconds: number
@@ -74,13 +88,14 @@ export interface TeamStats {
   id: string
   name: string
   color: string
-  total_score: number
+  total_points: number    // 合計ポイント
   game_count: number
   player_count: number
-  average_score: number
+  average_points: number  // 平均ポイント
   average_rank: number
   wins: number
   seconds: number
   thirds: number
   fourths: number
+  is_eliminated?: boolean
 }

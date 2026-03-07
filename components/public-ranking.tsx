@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { statsApi } from "@/lib/api-client"
 import type { TeamStats } from "@/lib/supabase"
@@ -14,7 +14,7 @@ interface PublicRankingProps {
 }
 
 interface TeamStatsWithDiff extends TeamStats {
-  previous_score: number
+  previous_points: number
   session_points: number
   point_diff_from_above: number
   remaining_games: number
@@ -30,7 +30,7 @@ export default function PublicRanking({
   const [loading, setLoading] = useState(true)
 
   // データ読み込み
-  const loadRankingData = async () => {
+  const loadRankingData = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -46,18 +46,18 @@ export default function PublicRanking({
       // データを結合して計算
       const enrichedStats: TeamStatsWithDiff[] = currentStats.map((team, index) => {
         const previousTeam = previousStats.find((p) => p.id === team.id)
-        const previousScore = previousTeam?.total_score || 0
-        const sessionPoints = team.total_score - previousScore
+        const previousPoints = previousTeam?.total_points || 0
+        const sessionPoints = team.total_points - previousPoints
 
         // 直上チームとのポイント差を計算
-        const pointDiffFromAbove = index > 0 ? currentStats[index - 1].total_score - team.total_score : 0
+        const pointDiffFromAbove = index > 0 ? currentStats[index - 1].total_points - team.total_points : 0
 
         // 残試合数（仮の値、実際のロジックに応じて調整）
         const remainingGames = Math.max(0, 64 - team.game_count) // 例：全64試合想定
 
         return {
           ...team,
-          previous_score: previousScore,
+          previous_points: previousPoints,
           session_points: sessionPoints,
           point_diff_from_above: pointDiffFromAbove,
           remaining_games: remainingGames,
@@ -70,21 +70,23 @@ export default function PublicRanking({
     } finally {
       setLoading(false)
     }
-  }
+  }, [previousSessionDate])
 
   useEffect(() => {
     loadRankingData()
-  }, [previousSessionDate])
+  }, [loadRankingData])
 
-  // スコアの表示形式
-  const formatScore = (score: number) => {
-    return score.toFixed(1)
+  // ポイントの表示形式
+  const formatPoints = (points: number | string) => {
+    const numPoints = Number(points)
+    return isNaN(numPoints) ? "0.0" : numPoints.toFixed(1)
   }
 
   // ポイント差の表示形式
-  const formatPointDiff = (diff: number) => {
-    if (diff === 0) return "-"
-    return diff > 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1)
+  const formatPointDiff = (diff: number | string) => {
+    const numDiff = Number(diff)
+    if (isNaN(numDiff) || numDiff === 0) return "-"
+    return numDiff > 0 ? `+${numDiff.toFixed(1)}` : numDiff.toFixed(1)
   }
 
   if (loading) {
@@ -138,9 +140,8 @@ export default function PublicRanking({
               {teamStats.map((team, index) => (
                 <div
                   key={team.id}
-                  className={`grid grid-cols-[50px_200px_60px_90px_70px_80px_60px_50px_50px_50px_50px] gap-1 p-3 text-xs sm:text-sm hover:bg-slate-50 transition-colors duration-200 ${
-                    index % 2 === 0 ? "bg-white" : "bg-slate-25"
-                  }`}
+                  className={`grid grid-cols-[50px_200px_60px_90px_70px_80px_60px_50px_50px_50px_50px] gap-1 p-3 text-xs sm:text-sm hover:bg-slate-50 transition-colors duration-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-25"
+                    }`}
                 >
                   {/* 順位 */}
                   <div className="text-center font-bold text-slate-800">
@@ -159,27 +160,25 @@ export default function PublicRanking({
 
                   {/* TOTAL pt */}
                   <div
-                    className={`text-center font-bold ${
-                      team.total_score > 0 ? "text-green-600" : team.total_score < 0 ? "text-red-600" : "text-slate-600"
-                    }`}
+                    className={`text-center font-bold ${team.total_points > 0 ? "text-green-600" : team.total_points < 0 ? "text-red-600" : "text-slate-600"
+                      }`}
                   >
-                    {formatScore(team.total_score)}
+                    {formatPoints(team.total_points)}
                   </div>
 
                   {/* 直上pt差 */}
                   <div className="text-center text-slate-600">
-                    {index === 0 ? "-" : formatScore(team.point_diff_from_above)}
+                    {index === 0 ? "-" : formatPoints(team.point_diff_from_above)}
                   </div>
 
                   {/* 今節のpt */}
                   <div
-                    className={`text-center font-medium ${
-                      team.session_points > 0
+                    className={`text-center font-medium ${team.session_points > 0
                         ? "text-green-600"
                         : team.session_points < 0
                           ? "text-red-600"
                           : "text-slate-600"
-                    }`}
+                      }`}
                   >
                     {previousSessionDate ? formatPointDiff(team.session_points) : "-"}
                   </div>

@@ -4,11 +4,12 @@ import { teamOperations } from '@/lib/database'
 // PUT /api/teams/[id] - Update a team
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const updates = await request.json()
-    const team = await teamOperations.update(params.id, updates)
+    const team = await teamOperations.update(id, updates)
     return NextResponse.json(team)
   } catch (error) {
     console.error('Error updating team:', error)
@@ -22,10 +23,11 @@ export async function PUT(
 // DELETE /api/teams/[id] - Delete a team
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await teamOperations.delete(params.id)
+    const { id } = await params
+    await teamOperations.delete(id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting team:', error)

@@ -26,6 +26,7 @@ import {
   Settings,
   ChevronRight,
   Lock,
+  CalendarRange,
 } from "lucide-react"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
@@ -73,9 +74,8 @@ export default function Header({
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={`w-full justify-start text-left font-normal text-xs sm:text-sm h-10 border-2 focus:border-blue-500 ${
-              !date && "text-muted-foreground"
-            }`}
+            className={`w-full justify-start text-left font-normal text-xs sm:text-sm h-10 border-2 focus:border-blue-500 ${!date && "text-muted-foreground"
+              }`}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {date ? format(date, "yyyy/MM/dd", { locale: ja }) : placeholder}
@@ -107,6 +107,12 @@ export default function Header({
       label: "過去の成績",
       icon: History,
       description: "ゲーム履歴の確認・削除",
+    },
+    {
+      id: "seasonManagement",
+      label: "シーズン管理",
+      icon: CalendarRange,
+      description: "シーズン追加・設定・ステージ切替",
     },
     {
       id: "dataManagement",
@@ -256,9 +262,8 @@ export default function Header({
 
       {/* 管理者メニューのスライドイン */}
       <div
-        className={`absolute top-0 right-0 z-50 transition-all duration-300 ease-in-out ${
-          isAdminMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
-        }`}
+        className={`absolute top-0 right-0 z-50 transition-all duration-300 ease-in-out ${isAdminMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
+          }`}
       >
         <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-4 min-w-[280px] mt-2">
           {/* ヘッダー */}
