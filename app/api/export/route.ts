@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exportOperations } from '@/lib/database'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getDb } from '@/lib/get-db'
+
+export const runtime = 'edge'
 
 // GET /api/export?type=all&format=json - Export all data
 // GET /api/export?type=teams&format=csv - Export teams as CSV
@@ -18,9 +22,10 @@ export async function GET(request: NextRequest) {
           { status: 400 }
         )
       }
-      
-      const csvData = await exportOperations.exportToCSV(type as 'teams' | 'players' | 'gameResults')
-      
+
+      const db = await getDb()
+      const csvData = await exportOperations.exportToCSV(db, type as 'teams' | 'players' | 'gameResults')
+
       return new NextResponse(csvData, {
         headers: {
           'Content-Type': 'text/csv',
@@ -29,7 +34,8 @@ export async function GET(request: NextRequest) {
       })
     } else {
       // JSON export (all data)
-      const data = await exportOperations.exportAllData()
+      const db = await getDb()
+      const data = await exportOperations.exportAllData(db)
       return NextResponse.json(data)
     }
   } catch (error) {

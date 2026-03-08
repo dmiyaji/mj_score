@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { playerOperations } from '@/lib/database'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getDb } from '@/lib/get-db'
+
+export const runtime = 'edge'
 
 // PUT /api/players/[id] - Update a player
 export async function PUT(
@@ -8,8 +12,9 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const updates = await request.json()
-    const player = await playerOperations.update(id, updates)
+    const updates = await request.json() as any
+    const db = await getDb()
+    const player = await playerOperations.update(db, id, updates)
     return NextResponse.json(player)
   } catch (error) {
     console.error('Error updating player:', error)
@@ -27,7 +32,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    await playerOperations.delete(id)
+    const db = await getDb()
+    await playerOperations.delete(db, id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting player:', error)

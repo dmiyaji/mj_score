@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { gameResultOperations } from '@/lib/database'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getDb } from '@/lib/get-db'
+
+export const runtime = 'edge'
 
 export async function DELETE(
   request: NextRequest,
@@ -7,7 +11,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    await gameResultOperations.delete(id)
+    const db = await getDb()
+    await gameResultOperations.delete(db, id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting game result:', error)
@@ -25,14 +30,15 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const body = await request.json()
+    const body = await request.json() as any
     const { playerResults } = body
 
     if (!playerResults || !Array.isArray(playerResults)) {
       return NextResponse.json({ error: 'Missing or invalid playerResults' }, { status: 400 })
     }
 
-    await gameResultOperations.update(id, playerResults)
+    const db = await getDb()
+    await gameResultOperations.update(db, id, playerResults)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error updating game result:', error)

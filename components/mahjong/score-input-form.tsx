@@ -120,6 +120,15 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
 
   // 成績を保存
   const saveGameResult = async () => {
+    if (!activeSeason) {
+      toast({
+        title: "エラー",
+        description: "アクティブなシーズンが設定されていません。成績入力の前にシーズンを作成してアクティブにしてください。",
+        variant: "destructive",
+      })
+      return
+    }
+
     const hasEmptyNames = players.some((player) => player.name.trim() === "")
     if (hasEmptyNames) {
       toast({
@@ -206,6 +215,11 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
             {activeSeason && (
               <Badge variant="outline" className={`ml-1 border-emerald-200 bg-emerald-50 ${activeSeason.current_stage === 'FINAL' ? 'text-purple-700 border-purple-200 bg-purple-50' : 'text-emerald-700'}`}>
                 {activeSeason.name} {activeSeason.current_stage === 'FINAL' ? '(ファイナル)' : '(レギュラー)'}
+              </Badge>
+            )}
+            {!activeSeason && (
+              <Badge variant="destructive" className="ml-1">
+                有効なシーズンがありません
               </Badge>
             )}
           </div>
@@ -376,7 +390,13 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
           </div>
         </div>
 
-        <div className="flex items-center justify-between bg-gradient-to-r from-slate-50 to-blue-50 p-4 rounded-xl border border-slate-200">
+        {!activeSeason && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm mb-4">
+            現在アクティブなシーズンが設定されていません。成績を入力するには、設定画面からシーズンを作成して「アクティブ」に設定してください。
+          </div>
+        )}
+
+        <div className={`flex items-center justify-between p-4 rounded-xl border ${!activeSeason ? "bg-slate-100 border-slate-200 opacity-70" : "bg-gradient-to-r from-slate-50 to-blue-50 border-slate-200"}`}>
           <div className="text-xs sm:text-sm">
             <span className="text-muted-foreground">持ち点合計: </span>
             <span className={`font-bold ${currentTotal === 100000 ? "text-green-600" : "text-red-600"}`}>
@@ -385,7 +405,7 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
           </div>
           <Button
             onClick={saveGameResult}
-            disabled={currentTotal !== 100000 || players.some((p) => p.name === "")}
+            disabled={!activeSeason || currentTotal !== 100000 || players.some((p) => p.name === "")}
             className="text-xs sm:text-sm h-10 sm:h-12 px-6 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
           >
             成績を保存

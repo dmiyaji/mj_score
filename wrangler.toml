@@ -1,0 +1,14 @@
+name = "mj-score"
+compatibility_date = "2024-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Pages 向けのビルド出力ディレクトリ
+pages_build_output_dir = ".vercel/output/static"
+
+# D1 データベースのバインディング
+# local_is_persist = true によって、ローカル開発時のSQLiteファイルが .wrangler/state/v3/d1 に永続化されます。
+[[d1_databases]]
+binding = "DB"
+database_name = "mj-score-db"
+database_id = "ba530a69-ae72-471c-9bce-7c8129aead98" # 本番環境用ID
+preview_database_id = "mj-score-db"                 # ローカルやプレビュー環境で使用するDB名
