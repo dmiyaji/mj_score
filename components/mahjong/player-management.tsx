@@ -147,6 +147,46 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     }
   }
 
+  // ドラッグ＆ドロップの状態管理
+  const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null)
+
+  // --- ドラッグ＆ドロップのイベントハンドラー ---
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, playerId: string) => {
+    setDraggedPlayerId(playerId)
+    e.dataTransfer.setData("playerId", playerId)
+    e.dataTransfer.effectAllowed = "move"
+    // 見た目のドラッグ画像を少し半透明にする
+    const target = e.target as HTMLElement
+    setTimeout(() => {
+      target.style.opacity = "0.5"
+    }, 0)
+  }
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    setDraggedPlayerId(null)
+    const target = e.target as HTMLElement
+    target.style.opacity = "1"
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+  }
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, targetTeamId: string) => {
+    e.preventDefault()
+    const playerId = e.dataTransfer.getData("playerId")
+
+    if (!playerId) return
+
+    const player = registeredPlayers.find(p => p.id === playerId)
+    // 既にそのチームに所属している場合は何もしない
+    if (player && player.team_id !== targetTeamId) {
+      // Optmistic UI Update: We drop it and let the updatePlayerTeam handle the API hit
+      await updatePlayerTeam(playerId, targetTeamId)
+    }
+  }
+
   // チーム名を取得
   const getTeamName = (teamId: string | null) => {
     if (!teamId) return "未所属"
@@ -161,6 +201,18 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     return team ? team.color : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border-gray-300"
   }
 
+  // チームカラーから枠線や背景色を抽出（Tailwindのクラスをパース）
+  const getTeamBorderColor = (teamId: string) => {
+    const colorClass = getTeamColor(teamId)
+    // 簡易的にcyan, rose, emerald, amberなどにマッピング
+    if (colorClass.includes("cyan") || colorClass.includes("blue")) return "border-blue-400 bg-blue-50/50"
+    if (colorClass.includes("rose") || colorClass.includes("red")) return "border-red-400 bg-red-50/50"
+    if (colorClass.includes("emerald") || colorClass.includes("green")) return "border-emerald-400 bg-emerald-50/50"
+    if (colorClass.includes("amber") || colorClass.includes("yellow")) return "border-amber-400 bg-amber-50/50"
+    if (colorClass.includes("purple") || colorClass.includes("fuchsia")) return "border-purple-400 bg-purple-50/50"
+    return "border-slate-300 bg-slate-50"
+  }
+
   return (
     <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
       <CardHeader className="pb-3 sm:pb-6 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-t-lg">
@@ -170,6 +222,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
               <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             プレイヤー管理
+            <span className="text-sm font-normal text-slate-500 ml-2 hidden sm:inline">(ドラッグ＆ドロップでチーム移動)</span>
           </span>
           <Dialog open={isPlayerDialogOpen} onOpenChange={setIsPlayerDialogOpen}>
             <DialogTrigger asChild>
@@ -240,93 +293,125 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
           </Dialog>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
-        {registeredPlayers.length === 0 ? (
+
+      <CardContent className="p-4 sm:p-6 overflow-x-auto">
+        <div className="text-xs text-slate-500 sm:hidden mb-4 bg-blue-50 rounded-md p-2 border border-blue-100">
+          💡 カードを長押ししてドラッグすると別のチームへ移動できます
+        </div>
+
+        {teams.length === 0 ? (
           <p className="text-muted-foreground text-center py-8 text-sm bg-slate-50 rounded-xl">
-            プレイヤーが登録されていません
+            先にチームを登録してください
           </p>
         ) : (
-          <div className="space-y-3">
-            {registeredPlayers.map((player) => (
-              <div
-                key={player.id}
-                className="flex items-center justify-between p-4 border-2 rounded-xl text-sm bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-200"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {editingPlayer?.id === player.id ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <Input
-                        value={editingPlayer.name}
-                        onChange={(e) => setEditingPlayer({ ...editingPlayer, name: e.target.value })}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            updatePlayerName(player.id, editingPlayer.name)
-                          } else if (e.key === "Escape") {
-                            setEditingPlayer(null)
-                          }
-                        }}
-                        className="text-sm h-8 flex-1 border-2 focus:border-blue-500"
-                        autoFocus
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => updatePlayerName(player.id, editingPlayer.name)}
-                        className="h-8 px-3 text-xs bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-                      >
-                        保存
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingPlayer(null)}
-                        className="h-8 px-3 text-xs border-2 hover:bg-slate-50"
-                      >
-                        キャンセル
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <span className="truncate font-medium" title={player.name}>
-                        {player.name}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingPlayer({ id: player.id, name: player.name })}
-                        className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200"
-                      >
-                        <Edit className="w-3 h-3" />
-                      </Button>
-                    </>
-                  )}
-                  <Badge className={`px-3 py-1 rounded-full text-xs border ${getTeamColor(player.team_id)}`}>
-                    {getTeamName(player.team_id)}
-                  </Badge>
+          <div className="flex flex-col gap-6 pb-4">
+            {/* チームごとのカラム（縦並び） */}
+            {teams.map(team => {
+              const teamPlayers = registeredPlayers.filter(p => p.team_id === team.id)
+              const containerStyles = getTeamBorderColor(team.id)
+
+              return (
+                <div
+                  key={team.id}
+                  className={`w-full flex flex-col rounded-xl border-t-4 shadow-sm transition-all duration-200 ${containerStyles}`}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, team.id)}
+                >
+                  <div className="p-3 border-b border-slate-200/50 flex items-center justify-between bg-white/40">
+                    <Badge className={`px-2 py-0.5 rounded-full text-xs border ${team.color}`}>
+                      {team.name}
+                    </Badge>
+                    <span className="text-xs font-bold text-slate-500 bg-white/80 px-2 py-0.5 rounded-md shadow-sm">
+                      {teamPlayers.length} 名
+                    </span>
+                  </div>
+
+                  <div className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 min-h-[120px]">
+                    {teamPlayers.length === 0 ? (
+                      <div className="col-span-full h-24 flex items-center justify-center border-2 border-dashed border-slate-300 rounded-lg text-slate-400 text-xs">
+                        プレイヤーをドロップ
+                      </div>
+                    ) : (
+                      teamPlayers.map(player => (
+                        <div
+                          key={player.id}
+                          draggable={true}
+                          onDragStart={(e) => handleDragStart(e, player.id)}
+                          onDragEnd={handleDragEnd}
+                          className="group relative bg-white border border-slate-200 rounded-lg p-3 shadow-sm hover:shadow-md hover:border-blue-300 cursor-grab active:cursor-grabbing transition-all duration-200 h-[64px] flex flex-col justify-center"
+                        >
+                          <div className="flex items-center justify-between min-w-0">
+                            {editingPlayer?.id === player.id ? (
+                              <div className="flex items-center gap-1 flex-1 z-10 bg-white absolute inset-1 p-1 rounded-md shadow-lg border border-blue-200">
+                                <Input
+                                  value={editingPlayer.name}
+                                  onChange={(e) => setEditingPlayer({ ...editingPlayer, name: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") updatePlayerName(player.id, editingPlayer.name)
+                                    else if (e.key === "Escape") setEditingPlayer(null)
+                                  }}
+                                  className="text-xs h-7 px-2 flex-1 border-2 focus:border-blue-500"
+                                  autoFocus
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={() => updatePlayerName(player.id, editingPlayer.name)}
+                                  className="h-7 w-7 p-0 bg-emerald-500 hover:bg-emerald-600 rounded-md"
+                                >
+                                  ✓
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditingPlayer(null)}
+                                  className="h-7 w-7 p-0 text-slate-500 hover:bg-slate-100 rounded-md"
+                                >
+                                  ×
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <span className="text-sm font-semibold text-slate-700 truncate mr-1" title={player.name}>
+                                  {player.name}
+                                </span>
+
+                                {/* ホバー時に表示される操作ボタン類 */}
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 pl-1 rounded-l-md">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingPlayer({ id: player.id, name: player.name })}
+                                    className="h-6 w-6 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md"
+                                    title="名前を変更"
+                                  >
+                                    <Edit className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deletePlayer(player.id)}
+                                    className="h-6 w-6 p-0 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md"
+                                    title="削除"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* ドラッグ中のハンドル用インジケーター（視覚的ヒント） */}
+                          <div className="mt-1 flex gap-0.5 justify-center opacity-0 group-hover:opacity-30">
+                            <div className="w-6 h-0.5 bg-slate-400 rounded-full"></div>
+                            <div className="w-6 h-0.5 bg-slate-400 rounded-full"></div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Select value={player.team_id || ""} onValueChange={(value) => updatePlayerTeam(player.id, value)}>
-                    <SelectTrigger className="h-8 w-24 sm:w-32 text-xs border-2 focus:border-blue-500">
-                      <SelectValue placeholder="チーム変更" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teams.map((team) => (
-                        <SelectItem key={team.id} value={team.id} className="text-xs">
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => deletePlayer(player.id)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0 border-2 hover:border-red-300 transition-all duration-200"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </CardContent>

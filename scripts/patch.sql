@@ -1,0 +1,1 @@
+ALTER TABLE seasons ADD COLUMN current_stage TEXT DEFAULT 'REGULAR';

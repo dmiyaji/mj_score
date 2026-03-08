@@ -1,19 +1,7 @@
-import mysql from 'mysql2/promise'
-
-// MySQL connection configuration
-const dbConfig = {
-  host: process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DATABASE_PORT || '3306'),
-  user: process.env.DATABASE_USER || 'root',
-  password: process.env.DATABASE_PASSWORD || '',
-  database: process.env.DATABASE_NAME || 'mahjong_score',
-  timezone: '+00:00'
+// Cloudflare D1 Database binding interface
+export interface Env {
+  DB: D1Database;
 }
-
-console.log(dbConfig);
-
-// Create MySQL connection pool
-export const db = mysql.createPool(dbConfig)
 
 // データベースの型定義
 export interface Team {

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { importOperations } from '@/lib/database'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getDb } from '@/lib/get-db'
+
+export const runtime = 'edge'
 
 // POST /api/import - Import data
 export async function POST(request: NextRequest) {
   try {
-    const { type, data, csvText } = await request.json()
-    
+    const { type, data, csvText } = await request.json() as any
+
     if (!type || !['teams', 'players', 'gameResults'].includes(type)) {
       return NextResponse.json(
         { error: 'Invalid import type' },
@@ -27,15 +31,16 @@ export async function POST(request: NextRequest) {
     }
 
     let result
+    const db = await getDb()
     switch (type) {
       case 'teams':
-        result = await importOperations.importTeams(importData)
+        result = await importOperations.importTeams(db, importData)
         break
       case 'players':
-        result = await importOperations.importPlayers(importData)
+        result = await importOperations.importPlayers(db, importData)
         break
       case 'gameResults':
-        result = await importOperations.importGameResults(importData)
+        result = await importOperations.importGameResults(db, importData)
         break
       default:
         return NextResponse.json(
@@ -44,10 +49,10 @@ export async function POST(request: NextRequest) {
         )
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       imported: result.length,
-      data: result 
+      data: result
     })
   } catch (error) {
     console.error('Error importing data:', error)

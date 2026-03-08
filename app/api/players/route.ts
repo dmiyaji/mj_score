@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { playerOperations } from '@/lib/database'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getDb } from '@/lib/get-db'
+
+export const runtime = 'edge'
 
 // GET /api/players - Get all players
 export async function GET() {
   try {
-    const players = await playerOperations.getAll()
+    const db = await getDb()
+    const players = await playerOperations.getAll(db)
     return NextResponse.json(players)
   } catch (error) {
     console.error('Error fetching players:', error)
@@ -18,8 +23,8 @@ export async function GET() {
 // POST /api/players - Create a new player
 export async function POST(request: NextRequest) {
   try {
-    const { name, teamId } = await request.json()
-    
+    const { name, teamId } = await request.json() as { name: string, teamId: string }
+
     if (!name || !teamId) {
       return NextResponse.json(
         { error: 'Name and teamId are required' },
@@ -27,7 +32,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const player = await playerOperations.create(name, teamId)
+    const db = await getDb()
+    const player = await playerOperations.create(db, name, teamId)
     return NextResponse.json(player, { status: 201 })
   } catch (error) {
     console.error('Error creating player:', error)

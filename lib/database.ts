@@ -1,5 +1,4 @@
 import {
-  db,
   type Team,
   type Player,
   type GameResult,
@@ -8,85 +7,83 @@ import {
   type TeamStats,
   type Season,
 } from "./supabase"
-import { v4 as uuidv4 } from 'uuid'
 
-console.log('DB Host:', process.env.DATABASE_HOST);
 
 // シーズン関連の操作
 export const seasonOperations = {
-  async getAll(): Promise<Season[]> {
-    const [rows] = await db.execute('SELECT * FROM seasons ORDER BY created_at ASC')
-    return rows as Season[]
+  async getAll(db: D1Database): Promise<Season[]> {
+    const { results } = await db.prepare('SELECT * FROM seasons ORDER BY created_at ASC').all()
+    return results as unknown as Season[]
   },
 
-  async getActive(): Promise<Season | null> {
-    const [rows] = await db.execute('SELECT * FROM seasons WHERE is_active = TRUE LIMIT 1')
-    const seasons = rows as Season[]
-    return seasons.length > 0 ? seasons[0] : null
+  async getActive(db: D1Database): Promise<Season | null> {
+    const { results } = await db.prepare('SELECT * FROM seasons WHERE is_active = TRUE LIMIT 1').all()
+    return results.length > 0 ? (results[0] as unknown as Season) : null
   },
 
-  async create(name: string): Promise<Season> {
-    const id = uuidv4()
+  async create(db: D1Database, name: string): Promise<Season> {
+    const id = crypto.randomUUID()
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
-    // First, if this is the only season, make it active
-    const seasons = await this.getAll()
+    const seasons = await this.getAll(db)
     const is_active = seasons.length === 0
 
-    await db.execute(
-      'INSERT INTO seasons (id, name, is_active, current_stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, name, is_active, 'REGULAR', now, now]
-    )
+    await db.prepare(
+      'INSERT INTO seasons (id, name, is_active, current_stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(id, name, is_active, 'REGULAR', now, now).run()
 
     return { id, name, is_active, current_stage: 'REGULAR', created_at: now, updated_at: now }
   },
 
-  async setActive(id: string): Promise<void> {
+  async setActive(db: D1Database, id: string): Promise<void> {
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    await db.execute('UPDATE seasons SET is_active = FALSE, updated_at = ?', [now])
-    await db.execute('UPDATE seasons SET is_active = TRUE, updated_at = ? WHERE id = ?', [now, id])
+    // D1 allows batching statements for atomicity
+    await db.batch([
+      db.prepare('UPDATE seasons SET is_active = FALSE, updated_at = ?').bind(now),
+      db.prepare('UPDATE seasons SET is_active = TRUE, updated_at = ? WHERE id = ?').bind(now, id)
+    ])
   },
 
-  async setStage(id: string, stage: 'REGULAR' | 'FINAL'): Promise<void> {
+  async setStage(db: D1Database, id: string, stage: 'REGULAR' | 'FINAL'): Promise<void> {
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    await db.execute('UPDATE seasons SET current_stage = ?, updated_at = ? WHERE id = ?', [stage, now, id])
+    await db.prepare('UPDATE seasons SET current_stage = ?, updated_at = ? WHERE id = ?')
+      .bind(stage, now, id).run()
   },
 
-  async delete(id: string): Promise<void> {
-    await db.execute('DELETE FROM seasons WHERE id = ?', [id])
+  async delete(db: D1Database, id: string): Promise<void> {
+    await db.prepare('DELETE FROM seasons WHERE id = ?').bind(id).run()
   }
 }
 
 // チーム関連の操作
 export const teamOperations = {
   // 全チーム取得
-  async getAll(): Promise<Team[]> {
-    const [rows] = await db.execute('SELECT id, name, color, created_at, updated_at FROM teams ORDER BY name')
-    return rows as Team[]
+  async getAll(db: D1Database): Promise<Team[]> {
+    const { results } = await db.prepare('SELECT id, name, color, created_at, updated_at FROM teams ORDER BY name').all()
+    return results as unknown as Team[]
   },
 
   // チーム作成
-  async create(name: string, color: string): Promise<Team> {
-    const id = uuidv4()
+  async create(db: D1Database, name: string, color: string): Promise<Team> {
+    const id = crypto.randomUUID()
     const now = new Date();
-    const mysqlDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
+    const isoDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
 
-    await db.execute(
-      'INSERT INTO teams (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [id, name, color, mysqlDatetime, mysqlDatetime]
-    )
+    await db.prepare(
+      'INSERT INTO teams (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(id, name, color, isoDatetime, isoDatetime).run()
 
     return {
       id,
       name,
       color,
-      created_at: mysqlDatetime,
-      updated_at: mysqlDatetime
+      created_at: isoDatetime,
+      updated_at: isoDatetime
     }
   },
 
-  // チーム更新を追加
-  async update(id: string, updates: Partial<Pick<Team, "name" | "color">>): Promise<Team> {
+  // チーム更新
+  async update(db: D1Database, id: string, updates: Partial<Pick<Team, "name" | "color">>): Promise<Team> {
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
     const fields = []
     const values = []
@@ -103,62 +100,60 @@ export const teamOperations = {
     fields.push('updated_at = ?')
     values.push(now, id)
 
-    await db.execute(
-      `UPDATE teams SET ${fields.join(', ')} WHERE id = ?`,
-      values
-    )
+    await db.prepare(
+      `UPDATE teams SET ${fields.join(', ')} WHERE id = ?`
+    ).bind(...values).run()
 
-    const [rows] = await db.execute('SELECT * FROM teams WHERE id = ?', [id])
-    return (rows as Team[])[0]
+    const { results } = await db.prepare('SELECT * FROM teams WHERE id = ?').bind(id).all()
+    return results[0] as unknown as Team
   },
 
   // チーム削除
-  async delete(id: string): Promise<void> {
-    await db.execute('DELETE FROM teams WHERE id = ?', [id])
+  async delete(db: D1Database, id: string): Promise<void> {
+    await db.prepare('DELETE FROM teams WHERE id = ?').bind(id).run()
   },
 }
 
 // プレイヤー関連の操作
 export const playerOperations = {
   // 全プレイヤー取得（チーム情報含む）
-  async getAll(): Promise<Player[]> {
-    const [rows] = await db.execute(`
+  async getAll(db: D1Database): Promise<Player[]> {
+    const { results } = await db.prepare(`
       SELECT 
         p.id, p.name, p.team_id, p.created_at, p.updated_at,
         JSON_OBJECT('id', t.id, 'name', t.name, 'color', t.color) as teams
       FROM players p
       LEFT JOIN teams t ON p.team_id = t.id
       ORDER BY p.name
-    `)
+    `).all()
 
-    return (rows as any[]).map(row => ({
+    return (results as any[]).map(row => ({
       ...row,
-      teams: row.teams || null
+      teams: row.teams && typeof row.teams === 'string' ? JSON.parse(row.teams) : row.teams || null
     })) as Player[]
   },
 
   // プレイヤー作成
-  async create(name: string, teamId: string): Promise<Player> {
-    const id = uuidv4()
+  async create(db: D1Database, name: string, teamId: string): Promise<Player> {
+    const id = crypto.randomUUID()
     const now = new Date();
-    const mysqlDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
+    const isoDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
 
-    await db.execute(
-      'INSERT INTO players (id, name, team_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [id, name, teamId, mysqlDatetime, mysqlDatetime]
-    )
+    await db.prepare(
+      'INSERT INTO players (id, name, team_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(id, name, teamId, isoDatetime, isoDatetime).run()
 
     return {
       id,
       name,
       team_id: teamId,
-      created_at: mysqlDatetime,
-      updated_at: mysqlDatetime
+      created_at: isoDatetime,
+      updated_at: isoDatetime
     }
   },
 
   // プレイヤー更新
-  async update(id: string, updates: Partial<Pick<Player, "name" | "team_id">>): Promise<Player> {
+  async update(db: D1Database, id: string, updates: Partial<Pick<Player, "name" | "team_id">>): Promise<Player> {
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
     const fields = []
     const values = []
@@ -175,34 +170,33 @@ export const playerOperations = {
     fields.push('updated_at = ?')
     values.push(now, id)
 
-    await db.execute(
-      `UPDATE players SET ${fields.join(', ')} WHERE id = ?`,
-      values
-    )
+    await db.prepare(
+      `UPDATE players SET ${fields.join(', ')} WHERE id = ?`
+    ).bind(...values).run()
 
-    const [rows] = await db.execute('SELECT * FROM players WHERE id = ?', [id])
-    return (rows as Player[])[0]
+    const { results } = await db.prepare('SELECT * FROM players WHERE id = ?').bind(id).all()
+    return results[0] as unknown as Player
   },
 
   // プレイヤー削除
-  async delete(id: string): Promise<void> {
-    await db.execute('DELETE FROM players WHERE id = ?', [id])
+  async delete(db: D1Database, id: string): Promise<void> {
+    await db.prepare('DELETE FROM players WHERE id = ?').bind(id).run()
   },
 }
 
 // ゲーム結果関連の操作
 export const gameResultOperations = {
   // 全ゲーム結果取得（プレイヤー情報含む）
-  async getAll(): Promise<(GameResult & { player_game_results: (PlayerGameResult & { players: Player })[] })[]> {
-    const [gameRows] = await db.execute(`
+  async getAll(db: D1Database): Promise<(GameResult & { player_game_results: (PlayerGameResult & { players: Player })[] })[]> {
+    const { results: gameRows } = await db.prepare(`
       SELECT id, game_date, season_id, stage, created_at, updated_at
       FROM game_results
       ORDER BY game_date DESC
-    `)
+    `).all()
 
     const results = []
-    for (const game of gameRows as GameResult[]) {
-      const [playerRows] = await db.execute(`
+    for (const game of gameRows as unknown as GameResult[]) {
+      const { results: playerRows } = await db.prepare(`
         SELECT 
           pgr.id, pgr.game_result_id, pgr.player_id, pgr.team_id as pgr_team_id, pgr.points, pgr.score, pgr.penalty_points, pgr.rank, pgr.created_at,
           JSON_OBJECT('id', p.id, 'name', p.name, 'team_id', p.team_id) as players
@@ -210,7 +204,7 @@ export const gameResultOperations = {
         JOIN players p ON pgr.player_id = p.id
         WHERE pgr.game_result_id = ?
         ORDER BY pgr.rank
-      `, [game.id])
+      `).bind(game.id).all()
 
       const player_game_results = (playerRows as any[]).map(row => ({
         ...row,
@@ -219,7 +213,7 @@ export const gameResultOperations = {
         score: Number(row.score),
         penalty_points: Number(row.penalty_points || 0),
         rank: Number(row.rank),
-        players: row.players
+        players: row.players && typeof row.players === 'string' ? JSON.parse(row.players) : row.players
       })) as (PlayerGameResult & { players: Player })[]
 
       results.push({
@@ -233,6 +227,7 @@ export const gameResultOperations = {
 
   // ゲーム結果作成
   async create(
+    db: D1Database,
     gameDate: string,
     playerResults: Array<{
       playerId: string
@@ -245,54 +240,66 @@ export const gameResultOperations = {
     seasonId?: string,
     stage?: 'REGULAR' | 'FINAL'
   ): Promise<GameResult> {
-    const gameId = uuidv4()
+    const gameId = crypto.randomUUID()
     const now = new Date();
-    const mysqlDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
+    const isoDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
 
     // シーズンIDとステージが指定されていない場合は、アクティブなシーズンを取得して設定
     let activeSeasonId = seasonId;
     let currentStage = stage;
+
     if (!activeSeasonId || !currentStage) {
-      const activeSeason = await seasonOperations.getActive();
-      if (!activeSeasonId) activeSeasonId = activeSeason ? activeSeason.id : '00000000-0000-0000-0000-000000000001';
-      if (!currentStage) currentStage = activeSeason ? activeSeason.current_stage : 'REGULAR';
+      let activeSeason = await seasonOperations.getActive(db);
+
+      if (!activeSeason) {
+        throw new Error('アクティブなシーズンが設定されていません。成績入力の前にシーズンを作成してアクティブにしてください。');
+      }
+
+      if (!activeSeasonId) activeSeasonId = activeSeason.id;
+      if (!currentStage) currentStage = activeSeason.current_stage;
     }
 
-    // ゲーム結果を作成
-    await db.execute(
-      'INSERT INTO game_results (id, game_date, season_id, stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [gameId, gameDate, activeSeasonId, currentStage, mysqlDatetime, mysqlDatetime]
+    const statements = []
+
+    // ゲーム結果を作成するステートメント
+    statements.push(
+      db.prepare('INSERT INTO game_results (id, game_date, season_id, stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(gameId, gameDate, activeSeasonId, currentStage, isoDatetime, isoDatetime)
     )
 
-    // プレイヤー個別結果を作成
+    // プレイヤー個別結果を作成するステートメント
     for (const result of playerResults) {
-      const playerGameResultId = uuidv4()
       const penalty = result.penaltyPoints || 0
-      await db.execute(
-        'INSERT INTO player_game_results (id, game_result_id, player_id, team_id, score, points, penalty_points, `rank`, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [playerGameResultId, gameId, result.playerId, result.teamId, result.score, result.points, penalty, result.rank, mysqlDatetime]
+      statements.push(
+        db.prepare('INSERT INTO player_game_results (game_result_id, player_id, team_id, score, points, penalty_points, rank, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+          .bind(gameId, result.playerId, result.teamId, result.score, result.points, penalty, result.rank, isoDatetime)
       )
     }
+
+    // トランザクションとしてバッチ実行
+    await db.batch(statements)
 
     return {
       id: gameId,
       game_date: gameDate,
       season_id: activeSeasonId,
       stage: currentStage as 'REGULAR' | 'FINAL',
-      created_at: mysqlDatetime,
-      updated_at: mysqlDatetime
+      created_at: isoDatetime,
+      updated_at: isoDatetime
     }
   },
 
   // ゲーム結果削除
-  async delete(id: string): Promise<void> {
-    // player_game_results を先に削除（外部キー制約のため）
-    await db.execute('DELETE FROM player_game_results WHERE game_result_id = ?', [id])
-    await db.execute('DELETE FROM game_results WHERE id = ?', [id])
+  async delete(db: D1Database, id: string): Promise<void> {
+    await db.batch([
+      db.prepare('DELETE FROM player_game_results WHERE game_result_id = ?').bind(id),
+      db.prepare('DELETE FROM game_results WHERE id = ?').bind(id)
+    ])
   },
 
   // ゲーム結果更新
   async update(
+    db: D1Database,
     id: string,
     playerResults: Array<{
       id: string
@@ -323,21 +330,24 @@ export const gameResultOperations = {
     updateQuery += ' WHERE id = ?'
     updateParams.push(id)
 
-    await db.execute(updateQuery, updateParams)
+    const statements = []
+    statements.push(db.prepare(updateQuery).bind(...updateParams))
 
     for (const result of playerResults) {
-      await db.execute(
-        'UPDATE player_game_results SET player_id = ?, team_id = ?, score = ?, points = ?, penalty_points = ?, `rank` = ? WHERE id = ? AND game_result_id = ?',
-        [result.playerId, result.teamId, result.score, result.points, result.penaltyPoints || 0, result.rank, result.id, id]
+      statements.push(
+        db.prepare('UPDATE player_game_results SET player_id = ?, team_id = ?, score = ?, points = ?, penalty_points = ?, rank = ? WHERE id = ? AND game_result_id = ?')
+          .bind(result.playerId, result.teamId, result.score, result.points, result.penaltyPoints || 0, result.rank, result.id, id)
       )
     }
+
+    await db.batch(statements)
   },
 }
 
 // 統計関連の操作
 export const statsOperations = {
   // プレイヤー統計取得（期間フィルター対応）
-  async getPlayerStats(teamFilter?: string, dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: 'REGULAR' | 'FINAL'): Promise<PlayerStats[]> {
+  async getPlayerStats(db: D1Database, teamFilter?: string, dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: 'REGULAR' | 'FINAL'): Promise<PlayerStats[]> {
     let whereConditions = []
     let queryParams: any[] = []
 
@@ -348,12 +358,12 @@ export const statsOperations = {
 
     if (dateFrom) {
       whereConditions.push("gr.game_date >= ?")
-      queryParams.push(dateFrom.toISOString().split("T")[0] + "T00:00:00.000Z")
+      queryParams.push(dateFrom.toISOString().split("T")[0] + " 00:00:00")
     }
 
     if (dateTo) {
       whereConditions.push("gr.game_date <= ?")
-      queryParams.push(dateTo.toISOString().split("T")[0] + "T23:59:59.999Z")
+      queryParams.push(dateTo.toISOString().split("T")[0] + " 23:59:59")
     }
 
     if (seasonId) {
@@ -364,7 +374,7 @@ export const statsOperations = {
 
     const whereClause = whereConditions.length > 0 ? "WHERE " + whereConditions.join(" AND ") : ""
 
-    const [rows] = await db.execute(`
+    const { results } = await db.prepare(`
       SELECT 
         p.id,
         p.name,
@@ -382,12 +392,12 @@ export const statsOperations = {
       JOIN game_results gr ON pgr.game_result_id = gr.id
       ${whereClause}
       ORDER BY p.name
-    `, queryParams)
+    `).bind(...queryParams).all()
 
     // データを集計
     const playerStatsMap = new Map<string, PlayerStats & { regular_total: number; final_total: number }>()
 
-      ; (rows as any[]).forEach((result: any) => {
+      ; (results as any[]).forEach((result: any) => {
         const playerId = result.id
 
         if (!playerStatsMap.has(playerId)) {
@@ -472,18 +482,18 @@ export const statsOperations = {
   },
 
   // チーム統計取得（期間フィルター対応）
-  async getTeamStats(dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: 'REGULAR' | 'FINAL'): Promise<TeamStats[]> {
+  async getTeamStats(db: D1Database, dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: 'REGULAR' | 'FINAL'): Promise<TeamStats[]> {
     let whereConditions = ["t.name != '未所属'"] // 未所属チームを除外
     let queryParams: any[] = []
 
     if (dateFrom) {
       whereConditions.push("gr.game_date >= ?")
-      queryParams.push(dateFrom.toISOString().split("T")[0] + "T00:00:00.000Z")
+      queryParams.push(dateFrom.toISOString().split("T")[0] + " 00:00:00")
     }
 
     if (dateTo) {
       whereConditions.push("gr.game_date <= ?")
-      queryParams.push(dateTo.toISOString().split("T")[0] + "T23:59:59.999Z")
+      queryParams.push(dateTo.toISOString().split("T")[0] + " 23:59:59")
     }
 
     if (seasonId) {
@@ -493,7 +503,7 @@ export const statsOperations = {
 
     const whereClause = "WHERE " + whereConditions.join(" AND ")
 
-    const [rows] = await db.execute(`
+    const { results } = await db.prepare(`
       SELECT 
         pgr.team_id as team_id,
         t.name as team_name,
@@ -510,13 +520,13 @@ export const statsOperations = {
       JOIN game_results gr ON pgr.game_result_id = gr.id
       ${whereClause}
       ORDER BY t.name
-    `, queryParams)
+    `).bind(...queryParams).all()
 
     // データを集計
     const teamStatsMap = new Map<string, TeamStats & { regular_total: number; final_total: number }>()
     const playerCountMap = new Map<string, Set<string>>()
 
-      ; (rows as any[]).forEach((result: any) => {
+      ; (results as any[]).forEach((result: any) => {
         const teamId = result.team_id
         const playerId = result.player_id
 
@@ -630,12 +640,12 @@ export const statsOperations = {
 // データエクスポート関連の操作
 export const exportOperations = {
   // 全データをエクスポート
-  async exportAllData() {
+  async exportAllData(db: D1Database) {
     try {
       const [teams, players, gameResults] = await Promise.all([
-        teamOperations.getAll(),
-        playerOperations.getAll(),
-        gameResultOperations.getAll(),
+        teamOperations.getAll(db),
+        playerOperations.getAll(db),
+        gameResultOperations.getAll(db),
       ])
 
       return {
@@ -650,24 +660,24 @@ export const exportOperations = {
   },
 
   // CSVフォーマットでエクスポート
-  async exportToCSV(tableName: "teams" | "players" | "gameResults") {
+  async exportToCSV(db: D1Database, tableName: "teams" | "players" | "gameResults") {
     try {
       let data: any[] = []
       let headers: string[] = []
 
       switch (tableName) {
         case "teams":
-          data = await teamOperations.getAll()
+          data = await teamOperations.getAll(db)
           headers = ["id", "name", "color", "created_at", "updated_at"]
           break
         case "players":
-          data = await playerOperations.getAll()
+          data = await playerOperations.getAll(db)
           headers = ["id", "name", "team_id", "created_at", "updated_at"]
           break
         case "gameResults":
-          const gameResults = await gameResultOperations.getAll()
-          data = gameResults.flatMap((game) =>
-            game.player_game_results.map((result) => ({
+          const gameResults = await gameResultOperations.getAll(db)
+          data = gameResults.flatMap((game: any) =>
+            game.player_game_results.map((result: any) => ({
               game_id: game.id,
               game_date: game.game_date,
               player_id: result.player_id,
@@ -710,7 +720,7 @@ export const exportOperations = {
 // データインポート関連の操作
 export const importOperations = {
   // チームデータをインポート
-  async importTeams(teams: Array<{ name: string; color: string }>) {
+  async importTeams(db: D1Database, teams: Array<{ name: string; color: string }>) {
     try {
       const results = []
       for (const team of teams) {
@@ -719,12 +729,12 @@ export const importOperations = {
         }
 
         // 重複チェック
-        const existingTeams = await teamOperations.getAll()
+        const existingTeams = await teamOperations.getAll(db)
         if (existingTeams.some((t) => t.name === team.name)) {
           throw new Error(`チーム「${team.name}」は既に存在します`)
         }
 
-        const result = await teamOperations.create(team.name, team.color)
+        const result = await teamOperations.create(db, team.name, team.color)
         results.push(result)
       }
       return results
@@ -734,10 +744,10 @@ export const importOperations = {
   },
 
   // プレイヤーデータをインポート
-  async importPlayers(players: Array<{ name: string; team_name?: string }>) {
+  async importPlayers(db: D1Database, players: Array<{ name: string; team_name?: string }>) {
     try {
-      const teams = await teamOperations.getAll()
-      const existingPlayers = await playerOperations.getAll()
+      const teams = await teamOperations.getAll(db)
+      const existingPlayers = await playerOperations.getAll(db)
       const results = []
 
       // 未所属チームを取得（デフォルトチーム）
@@ -763,7 +773,7 @@ export const importOperations = {
           teamId = team.id
         }
 
-        const result = await playerOperations.create(player.name, teamId)
+        const result = await playerOperations.create(db, player.name, teamId)
         results.push(result)
       }
       return results
@@ -774,6 +784,7 @@ export const importOperations = {
 
   // ゲーム結果データをインポート
   async importGameResults(
+    db: D1Database,
     gameResults: Array<{
       game_date: string
       players: Array<{
@@ -787,7 +798,7 @@ export const importOperations = {
     }>,
   ) {
     try {
-      const players = await playerOperations.getAll()
+      const players = await playerOperations.getAll(db)
       const results = []
 
       for (const game of gameResults) {
@@ -811,7 +822,7 @@ export const importOperations = {
           }
         })
 
-        const result = await gameResultOperations.create(game.game_date, playerResults)
+        const result = await gameResultOperations.create(db, game.game_date, playerResults)
         results.push(result)
       }
       return results

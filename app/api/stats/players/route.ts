@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { statsOperations } from '@/lib/database'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getDb } from '@/lib/get-db'
+
+export const runtime = 'edge'
 
 // GET /api/stats/players - Get player statistics
 export async function GET(request: NextRequest) {
@@ -15,7 +19,8 @@ export async function GET(request: NextRequest) {
     const dateFrom = dateFromStr ? new Date(dateFromStr) : undefined
     const dateTo = dateToStr ? new Date(dateToStr) : undefined
 
-    const playerStats = await statsOperations.getPlayerStats(teamFilter, dateFrom, dateTo, seasonId, stage)
+    const db = await getDb()
+    const playerStats = await statsOperations.getPlayerStats(db, teamFilter, dateFrom, dateTo, seasonId, stage)
     return NextResponse.json(playerStats)
   } catch (error) {
     console.error('Error fetching player stats:', error)

@@ -257,14 +257,7 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
                         className={`text-right font-bold text-xs p-2 ${team.total_points > 0 ? "text-green-600" : team.total_points < 0 ? "text-red-600" : ""
                           }`}
                       >
-                        <div className="flex items-center justify-end gap-1">
-                          {team.total_points > 0 ? (
-                            <TrendingUp className="w-3 h-3" />
-                          ) : team.total_points < 0 ? (
-                            <TrendingDown className="w-3 h-3" />
-                          ) : null}
-                          {formatPoints(team.total_points)}
-                        </div>
+                        {formatPoints(team.total_points)}
                       </TableCell>
                       <TableCell className="text-right text-xs p-2">{team.game_count}</TableCell>
                       <TableCell

@@ -260,57 +260,58 @@ export default function PlayerRanking({ teams, playerStats, seasons = [], onLoad
                     <SortableHeader sortKey="fourths" className="w-6 sm:w-8" align="right">
                       4着
                     </SortableHeader>
+                    <TableHead className="w-10 sm:w-14 text-right text-xs p-2 font-semibold">トップ率</TableHead>
+                    <TableHead className="w-10 sm:w-14 text-right text-xs p-2 font-semibold">ラス回避</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {getPlayerRankingData().map((player) => (
-                    <TableRow
-                      key={player.id}
-                      className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
-                    >
-                      <TableCell className="font-medium text-xs p-2">
-                        <div className="flex items-center gap-1">
-                          {getRankIcon(player.fixed_rank)}
-                          <span className={player.fixed_rank <= 3 ? "font-bold" : ""}>{player.fixed_rank}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium text-xs p-2">
-                        <span className="truncate block" title={player.name}>
-                          {truncateName(player.name, 8)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs p-2">
-                        <Badge className={`px-2 py-1 rounded-full text-[10px] sm:text-xs border ${player.team_color}`}>
-                          {truncateName(player.team_name, 4)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell
-                        className={`text-right font-bold text-xs p-2 ${player.total_points > 0 ? "text-green-600" : player.total_points < 0 ? "text-red-600" : ""
-                          }`}
+                  {getPlayerRankingData().map((player) => {
+                    const topRate = player.game_count > 0 ? ((player.wins / player.game_count) * 100).toFixed(2) : "0.00";
+                    const fourthAvoidanceRate = player.game_count > 0 ? (((player.game_count - player.fourths) / player.game_count) * 100).toFixed(2) : "0.00";
+                    return (
+                      <TableRow
+                        key={player.id}
+                        className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
                       >
-                        <div className="flex items-center justify-end gap-1">
-                          {player.total_points > 0 ? (
-                            <TrendingUp className="w-3 h-3" />
-                          ) : player.total_points < 0 ? (
-                            <TrendingDown className="w-3 h-3" />
-                          ) : null}
+                        <TableCell className="font-medium text-xs p-2">
+                          <div className="flex items-center gap-1">
+                            {getRankIcon(player.fixed_rank)}
+                            <span className={player.fixed_rank <= 3 ? "font-bold" : ""}>{player.fixed_rank}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium text-xs p-2">
+                          <span className="truncate block" title={player.name}>
+                            {truncateName(player.name, 8)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs p-2">
+                          <Badge className={`px-2 py-1 rounded-full text-[10px] sm:text-xs border ${player.team_color}`}>
+                            {truncateName(player.team_name, 4)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell
+                          className={`text-right font-bold text-xs p-2 ${player.total_points > 0 ? "text-green-600" : player.total_points < 0 ? "text-red-600" : ""
+                            }`}
+                        >
                           {formatPoints(player.total_points)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right text-xs p-2">{player.game_count}</TableCell>
-                      <TableCell
-                        className={`text-right text-xs p-2 ${player.average_points > 0 ? "text-green-600" : player.average_points < 0 ? "text-red-600" : ""
-                          }`}
-                      >
-                        {formatPoints(player.average_points)}
-                      </TableCell>
-                      <TableCell className="text-right text-xs p-2">{formatAverageRank(player.average_rank)}</TableCell>
-                      <TableCell className="text-right text-xs p-2 font-medium">{player.wins}</TableCell>
-                      <TableCell className="text-right text-xs p-2">{player.seconds}</TableCell>
-                      <TableCell className="text-right text-xs p-2">{player.thirds}</TableCell>
-                      <TableCell className="text-right text-xs p-2">{player.fourths}</TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell className="text-right text-xs p-2">{player.game_count}</TableCell>
+                        <TableCell
+                          className={`text-right text-xs p-2 ${player.average_points > 0 ? "text-green-600" : player.average_points < 0 ? "text-red-600" : ""
+                            }`}
+                        >
+                          {formatPoints(player.average_points)}
+                        </TableCell>
+                        <TableCell className="text-right text-xs p-2">{formatAverageRank(player.average_rank)}</TableCell>
+                        <TableCell className="text-right text-xs p-2 font-medium">{player.wins}</TableCell>
+                        <TableCell className="text-right text-xs p-2">{player.seconds}</TableCell>
+                        <TableCell className="text-right text-xs p-2">{player.thirds}</TableCell>
+                        <TableCell className="text-right text-xs p-2">{player.fourths}</TableCell>
+                        <TableCell className="text-right text-xs p-2">{topRate}%</TableCell>
+                        <TableCell className="text-right text-xs p-2">{fourthAvoidanceRate}%</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

@@ -1,8 +1,7 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
-import { Badge } from "@/components/ui/badge"
-import { statsApi } from "@/lib/api-client"
-import type { TeamStats } from "@/lib/supabase"
+import { statsApi, seasonApi } from "@/lib/api-client"
+import type { TeamStats, Season } from "@/lib/supabase"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 
@@ -21,39 +20,62 @@ interface TeamStatsWithDiff extends TeamStats {
 }
 
 export default function PublicRanking({
-  title = "DAY 22",
+  title = "NINE LEAGUE",
   date = new Date(),
   previousSessionDate,
   showLogo = true,
 }: PublicRankingProps) {
   const [teamStats, setTeamStats] = useState<TeamStatsWithDiff[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeSeasonName, setActiveSeasonName] = useState<string>("")
+  const [activeStage, setActiveStage] = useState<string>("")
 
   // データ読み込み
   const loadRankingData = useCallback(async () => {
     try {
       setLoading(true)
 
-      // 最新の統計データを取得
-      const currentStats = await statsApi.getTeamStats()
+      // シーズン一覧を取得して、アクティブなシーズンとステージを特定
+      const seasonsInfo = await seasonApi.getAll()
+      const activeSeason = seasonsInfo.find((s: Season) => s.is_active)
+
+      const seasonId = activeSeason ? activeSeason.id : undefined
+      const currentStage = activeSeason ? activeSeason.current_stage : undefined
+
+      if (activeSeason) {
+        setActiveSeasonName(activeSeason.name)
+        setActiveStage(currentStage === "FINAL" ? "FINAL STAGE" : "REGULAR SEASON")
+      }
+
+      // 指定されたシーズンとステージの最新統計データを取得
+      const currentStats = await statsApi.getTeamStats(undefined, undefined, seasonId, currentStage as 'REGULAR' | 'FINAL' | undefined)
 
       // 前節のデータを取得（前節日付が指定されている場合）
       let previousStats: TeamStats[] = []
       if (previousSessionDate) {
-        previousStats = await statsApi.getTeamStats(undefined, previousSessionDate)
+        previousStats = await statsApi.getTeamStats(undefined, previousSessionDate, seasonId, currentStage as 'REGULAR' | 'FINAL' | undefined)
       }
 
+      // ファイナル（脱落）などのロジックに合わせてソート
+      const sortedCurrentStats = [...currentStats].sort((a, b) => {
+        if (a.is_eliminated === b.is_eliminated) {
+          return b.total_points - a.total_points
+        }
+        return a.is_eliminated && !b.is_eliminated ? 1 : -1
+      })
+
       // データを結合して計算
-      const enrichedStats: TeamStatsWithDiff[] = currentStats.map((team, index) => {
+      const enrichedStats: TeamStatsWithDiff[] = sortedCurrentStats.map((team, index) => {
         const previousTeam = previousStats.find((p) => p.id === team.id)
         const previousPoints = previousTeam?.total_points || 0
         const sessionPoints = team.total_points - previousPoints
 
         // 直上チームとのポイント差を計算
-        const pointDiffFromAbove = index > 0 ? currentStats[index - 1].total_points - team.total_points : 0
+        const pointDiffFromAbove = index > 0 ? sortedCurrentStats[index - 1].total_points - team.total_points : 0
 
         // 残試合数（仮の値、実際のロジックに応じて調整）
-        const remainingGames = Math.max(0, 64 - team.game_count) // 例：全64試合想定
+        const totalGamesForStage = currentStage === "FINAL" ? 16 : 64 // 例: レギュラー64, ファイナル16
+        const remainingGames = Math.max(0, totalGamesForStage - team.game_count)
 
         return {
           ...team,
@@ -91,109 +113,173 @@ export default function PublicRanking({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-lg font-medium text-slate-700">データを読み込み中...</div>
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
+        <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
+        <div className="text-xl font-bold tracking-widest text-cyan-500 animate-pulse">LOADING DATA...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white p-4 sm:p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-slate-950 p-4 sm:p-8 font-sans text-slate-200 overflow-hidden relative selection:bg-cyan-500/30">
+      {/* Background Effects */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black"></div>
+        <div className="absolute -top-[20%] -right-[10%] w-[70%] h-[70%] rounded-full opacity-20 blur-[120px] bg-cyan-600"></div>
+        <div className="absolute top-[60%] -left-[10%] w-[50%] h-[50%] rounded-full opacity-10 blur-[100px] bg-purple-600"></div>
+        {/* Optional grid pattern placeholder */}
+        {/* <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-[0.03] bg-repeat"></div> */}
+      </div>
+
+      <div className="max-w-[1200px] mx-auto relative z-10">
         {/* ヘッダー */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
-            {title} {format(date, "yyyy/M/d(E)", { locale: ja }).toUpperCase()}
+        <div className="mb-8 sm:mb-12 text-center animate-in fade-in zoom-in-95 duration-1000">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-cyan-200 tracking-wider mb-2 drop-shadow-lg italic pr-2">
+            {title}
+            {activeSeasonName && (
+              <span className="text-xl sm:text-2xl md:text-3xl font-bold text-cyan-400 block sm:inline sm:ml-4 not-italic font-normal tracking-wide drop-shadow-none">
+                [{activeSeasonName} {activeStage}]
+              </span>
+            )}
+            <span className="text-cyan-400/80 mx-2 sm:mx-4 not-italic font-light">/</span>
+            {format(date, "yyyy.MM.dd", { locale: ja })}
           </h1>
+          <div className="w-32 h-1 mx-auto bg-gradient-to-r from-transparent via-cyan-500 to-transparent mt-4 md:mt-6"></div>
         </div>
 
-        {/* ランキングテーブル */}
+        {/* ランキングテーブルエリア */}
         <div className="relative">
-          {/* ロゴ（背景） */}
+          {/* ロゴ透かし（背景） */}
           {showLogo && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <div className="text-4xl sm:text-6xl font-bold text-slate-100 opacity-30 select-none">NINE LEAGUE</div>
+              <div className="text-6xl sm:text-8xl md:text-[10rem] font-black italic text-slate-100 opacity-[0.03] select-none tracking-tighter transform -skew-x-12 whitespace-nowrap">
+                NINE LEAGUE
+              </div>
             </div>
           )}
 
-          {/* テーブル */}
-          <div className="relative z-10 bg-white rounded-lg shadow-lg overflow-x-auto">
-            {/* ヘッダー */}
-            <div className="bg-slate-50 border-b border-slate-200">
-              <div className="grid grid-cols-[50px_200px_60px_90px_70px_80px_60px_50px_50px_50px_50px] gap-1 p-3 text-xs sm:text-sm font-semibold text-slate-700">
-                <div className="text-center">順位</div>
-                <div className="text-left">チーム</div>
-                <div className="text-center">試合数</div>
-                <div className="text-center">TOTAL pt</div>
-                <div className="text-center">直上pt差</div>
-                <div className="text-center">今節のpt</div>
-                <div className="text-center">残試合</div>
-                <div className="text-center">1着</div>
-                <div className="text-center">2着</div>
-                <div className="text-center">3着</div>
-                <div className="text-center">4着</div>
-              </div>
+          {/* テーブル・パネルコンテナ */}
+          <div className="relative z-10 space-y-3 sm:space-y-4">
+            {/* ヘッダー（デスクトップ専用） */}
+            <div className="hidden lg:grid grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-2 p-2 text-sm font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800/80 mb-4 px-4">
+              <div className="text-center">RANK</div>
+              <div className="text-left pl-6">TEAM</div>
+              <div className="text-center">GAMES</div>
+              <div className="text-right pr-4 text-cyan-400">TOTAL PT</div>
+              <div className="text-right">DIFF</div>
+              <div className="text-right pr-4">TODAY</div>
+              <div className="text-center">REMAIN</div>
+              <div className="text-center tracking-widest pl-2">1-2-3-4</div>
             </div>
 
-            {/* データ行 */}
-            <div className="divide-y divide-slate-100">
-              {teamStats.map((team, index) => (
+            {/* データ行（スタッガードアニメーションによるパネル表示） */}
+            {teamStats.map((team, index) => {
+              // 順位ごとの専用色・装飾
+              const rankColor =
+                index === 0 ? "from-yellow-300 via-yellow-400 to-yellow-600 text-yellow-950 ring-1 ring-yellow-400/50 shadow-[0_0_15px_rgba(250,204,21,0.3)]" :
+                  index === 1 ? "from-slate-200 via-slate-300 to-slate-400 text-slate-900 ring-1 ring-slate-300/50" :
+                    index === 2 ? "from-orange-300 via-orange-400 to-orange-600 text-orange-950 ring-1 ring-orange-400/50" :
+                      "from-slate-800 to-slate-900 text-slate-300 border border-slate-700/50";
+
+              const rankBg = index <= 2 ? `bg-gradient-to-br ${rankColor}` : rankColor;
+              const isPositive = team.total_points > 0;
+              const isSessionPositive = team.session_points > 0;
+              const isEliminated = team.is_eliminated ? "opacity-60 grayscale-[0.5]" : "";
+
+              return (
                 <div
                   key={team.id}
-                  className={`grid grid-cols-[50px_200px_60px_90px_70px_80px_60px_50px_50px_50px_50px] gap-1 p-3 text-xs sm:text-sm hover:bg-slate-50 transition-colors duration-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-25"
-                    }`}
+                  className={`group relative grid grid-cols-[60px_1fr] lg:grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-2 sm:gap-4 lg:gap-2 items-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-800/80 backdrop-blur-md border border-slate-700/50 shadow-xl hover:shadow-cyan-900/20 transition-all duration-300 animate-in fade-in slide-in-from-bottom-8 fill-mode-both ${isEliminated}`}
+                  style={{ animationDelay: `${index * 80}ms`, animationDuration: '800ms' }}
                 >
-                  {/* 順位 */}
-                  <div className="text-center font-bold text-slate-800">
-                    <span className={index > 3 ? "text-red-600" : ""}>{index + 1}</span>
+                  {/* アニメーション用背景ハイライト */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/5 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-2xl"></div>
+
+                  {/* チームカラーのネオンライン（左端） */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-2 sm:w-2.5 ${team.color} opacity-90 group-hover:opacity-100 group-hover:w-3 z-20 transition-all duration-300 rounded-l-xl sm:rounded-l-2xl shadow-[0_0_10px_currentColor]`}></div>
+                  {/* 奥のぼかしネオン */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-6 ${team.color} opacity-30 blur-xl pointer-events-none`}></div>
+
+                  {/* 順位ブロック */}
+                  <div className="flex justify-center z-10 relative">
+                    <div className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center font-black text-2xl sm:text-3xl lg:text-4xl shadow-inner transform -skew-x-6 sm:-skew-x-12 ${rankBg}`}>
+                      {index + 1}
+                    </div>
                   </div>
 
-                  {/* チーム名 */}
-                  <div className="text-left">
-                    <Badge className={`px-3 py-1 rounded-full text-xs border ${team.color} font-medium`}>
-                      {team.name}
-                    </Badge>
+                  {/* チーム名ブロック */}
+                  <div className="text-left font-black text-lg sm:text-2xl lg:text-3xl tracking-wide max-w-full overflow-hidden text-ellipsis whitespace-nowrap z-10 pl-2 lg:pl-6 text-slate-100 drop-shadow-md">
+                    {team.name}
                   </div>
 
-                  {/* 試合数 */}
-                  <div className="text-center font-medium">{team.game_count}</div>
+                  {/* モバイル/デスクトップ共通データグリッド（モバイル時は2段目に回り込む） */}
+                  <div className="col-span-2 lg:col-span-6 grid grid-cols-2 lg:grid-cols-[100px_180px_120px_120px_100px_180px] gap-2 lg:gap-2 items-center w-full mt-2 lg:mt-0 z-10 text-slate-200">
 
-                  {/* TOTAL pt */}
-                  <div
-                    className={`text-center font-bold ${team.total_points > 0 ? "text-green-600" : team.total_points < 0 ? "text-red-600" : "text-slate-600"
-                      }`}
-                  >
-                    {formatPoints(team.total_points)}
+                    {/* 試合数 */}
+                    <div className="flex justify-between lg:justify-center items-center px-4 lg:px-0 bg-slate-800/40 lg:bg-transparent rounded lg:rounded-none py-1.5 lg:py-0 border border-slate-700/50 lg:border-none">
+                      <span className="lg:hidden text-xs text-slate-400 font-bold uppercase tracking-wider">Games</span>
+                      <span className="font-mono text-lg sm:text-xl font-bold">{team.game_count}</span>
+                    </div>
+
+                    {/* TOTAL pt (最も強調する箇所) */}
+                    <div className="flex flex-col lg:items-end justify-center px-4 lg:px-0 bg-slate-950/80 lg:bg-transparent rounded-lg lg:rounded-none py-3 lg:py-0 col-span-2 lg:col-span-1 border border-cyan-900/40 lg:border-none shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] lg:shadow-none relative overflow-hidden group/pt">
+                      {/* メタリックなハイライト */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 lg:group-hover/pt:opacity-100 transition-opacity"></div>
+                      <span className="lg:hidden text-[10px] sm:text-xs text-cyan-400 font-black mb-1 uppercase tracking-widest pl-1">Total pt</span>
+                      <div className={`font-black text-4xl sm:text-5xl lg:text-5xl tracking-tighter tabular-nums text-right w-full lg:pr-4 ${isPositive ? 'text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.5)]' : team.total_points < 0 ? 'text-rose-500 drop-shadow-[0_0_12px_rgba(244,63,94,0.5)]' : 'text-slate-300'}`}>
+                        {formatPoints(team.total_points)}
+                      </div>
+                    </div>
+
+                    {/* 直上pt差 */}
+                    <div className="flex justify-between lg:flex-col lg:items-end px-4 lg:px-0 py-1.5 lg:py-0 bg-slate-800/40 lg:bg-transparent rounded lg:rounded-none lg:pr-2 border border-slate-700/50 lg:border-none">
+                      <span className="lg:text-[10px] text-slate-400 font-bold uppercase tracking-wider">Diff</span>
+                      <span className="font-mono text-slate-300 text-sm sm:text-lg tabular-nums font-semibold">
+                        {index === 0 ? "-" : formatPoints(team.point_diff_from_above)}
+                      </span>
+                    </div>
+
+                    {/* 今節のpt */}
+                    <div className="flex justify-between lg:flex-col lg:items-end px-4 lg:px-0 py-1.5 lg:py-0 bg-slate-800/40 lg:bg-transparent rounded lg:rounded-none lg:pr-4 border border-slate-700/50 lg:border-none">
+                      <span className="lg:text-[10px] text-slate-400 font-bold uppercase tracking-wider">Today</span>
+                      <span className={`font-mono text-sm sm:text-lg font-bold tabular-nums ${isSessionPositive ? 'text-emerald-400' : team.session_points < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                        {previousSessionDate ? formatPointDiff(team.session_points) : "-"}
+                      </span>
+                    </div>
+
+                    {/* 残試合 */}
+                    <div className="flex justify-between lg:justify-center items-center px-4 lg:px-0 py-1.5 lg:py-0 bg-slate-800/40 lg:bg-transparent rounded lg:rounded-none border border-slate-700/50 lg:border-none">
+                      <span className="lg:hidden text-xs text-slate-400 font-bold uppercase tracking-wider">Remain</span>
+                      <span className="font-mono text-slate-400 text-sm sm:text-lg font-semibold">{team.remaining_games}</span>
+                    </div>
+
+                    {/* 順位分布 */}
+                    <div className="col-span-2 lg:col-span-1 flex justify-center items-center gap-2 sm:gap-3 px-2 mt-2 lg:mt-0 lg:pl-4">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] text-slate-500 font-bold hidden lg:block mb-0.5">1st</span>
+                        <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm sm:text-base font-bold text-yellow-400 border border-yellow-500/30 shadow-inner">{team.wins}</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] text-slate-500 font-bold hidden lg:block mb-0.5">2nd</span>
+                        <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm sm:text-base font-bold text-slate-300 border border-slate-500/40 shadow-inner">{team.seconds}</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] text-slate-500 font-bold hidden lg:block mb-0.5">3rd</span>
+                        <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm sm:text-base font-bold text-orange-400 border border-orange-500/30 shadow-inner">{team.thirds}</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] text-slate-500 font-bold hidden lg:block mb-0.5">4th</span>
+                        <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm sm:text-base font-bold text-slate-500 border border-slate-700 shadow-inner">{team.fourths}</span>
+                      </div>
+                    </div>
                   </div>
-
-                  {/* 直上pt差 */}
-                  <div className="text-center text-slate-600">
-                    {index === 0 ? "-" : formatPoints(team.point_diff_from_above)}
-                  </div>
-
-                  {/* 今節のpt */}
-                  <div
-                    className={`text-center font-medium ${team.session_points > 0
-                        ? "text-green-600"
-                        : team.session_points < 0
-                          ? "text-red-600"
-                          : "text-slate-600"
-                      }`}
-                  >
-                    {previousSessionDate ? formatPointDiff(team.session_points) : "-"}
-                  </div>
-
-                  {/* 残試合 */}
-                  <div className="text-center text-slate-600">{team.remaining_games}</div>
-
-                  {/* 順位分布 */}
-                  <div className="text-center font-medium">{team.wins}</div>
-                  <div className="text-center">{team.seconds}</div>
-                  <div className="text-center">{team.thirds}</div>
-                  <div className="text-center">{team.fourths}</div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 text-center animate-in fade-in duration-1000 delay-1000 opacity-50">
+            <p className="text-xs text-slate-500 tracking-wider font-medium">LATEST UPDATE : {format(new Date(), "yyyy.MM.dd HH:mm", { locale: ja })}</p>
           </div>
         </div>
       </div>

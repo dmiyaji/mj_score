@@ -1,7 +1,4 @@
--- MySQL Database Schema for Mahjong Score Management System
 
-CREATE DATABASE IF NOT EXISTS mj_score;
-USE mj_score;
 
 -- Teams table
 CREATE TABLE teams (
@@ -9,7 +6,7 @@ CREATE TABLE teams (
     name VARCHAR(255) NOT NULL UNIQUE,
     color VARCHAR(255) NOT NULL DEFAULT 'bg-gray-100 text-gray-800',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Players table
@@ -18,16 +15,28 @@ CREATE TABLE players (
     name VARCHAR(255) NOT NULL UNIQUE,
     team_id VARCHAR(36),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL
+);
+
+-- Seasons table
+CREATE TABLE seasons (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT false,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Game results table
 CREATE TABLE game_results (
     id VARCHAR(36) PRIMARY KEY,
     game_date DATETIME NOT NULL,
+    season_id VARCHAR(36),
+    stage VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE SET NULL
 );
 
 -- Player game results table (junction table for game results and players)
@@ -56,4 +65,4 @@ CREATE INDEX idx_player_game_results_rank ON player_game_results(rank);
 
 -- Insert default "未所属" team
 INSERT INTO teams (id, name, color, created_at, updated_at) 
-VALUES ('00000000-0000-0000-0000-000000000001', '未所属', 'bg-gray-100 text-gray-800', NOW(), NOW());
+VALUES ('00000000-0000-0000-0000-000000000001', '未所属', 'bg-gray-100 text-gray-800', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);

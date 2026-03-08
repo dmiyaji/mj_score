@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { seasonOperations } from '@/lib/database'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getDb } from '@/lib/get-db'
+
+export const runtime = 'edge'
 
 // GET /api/seasons - Get all seasons
 export async function GET() {
     try {
-        const seasons = await seasonOperations.getAll()
+        const db = await getDb()
+        const seasons = await seasonOperations.getAll(db)
         return NextResponse.json(seasons)
     } catch (error) {
         console.error('Error fetching seasons:', error)
@@ -27,7 +32,8 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const season = await seasonOperations.create(name)
+        const db = await getDb()
+        const season = await seasonOperations.create(db, name)
         return NextResponse.json(season, { status: 201 })
     } catch (error) {
         console.error('Error creating season:', error)
