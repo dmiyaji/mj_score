@@ -206,32 +206,23 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
   return (
     <Card className="mb-4 sm:mb-8 bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
       <CardHeader className="pb-3 sm:pb-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
-        <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2 text-lg sm:text-xl">
+        <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3 sm:gap-2 text-lg sm:text-xl">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg">
+            <div className="p-1.5 sm:p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-sm">
               <Plus className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            新しいゲーム結果を入力
+            <span className="font-bold whitespace-nowrap">試合結果入力</span>
             {activeSeason && (
-              <Badge variant="outline" className={`ml-1 border-emerald-200 bg-emerald-50 ${activeSeason.current_stage === 'FINAL' ? 'text-purple-700 border-purple-200 bg-purple-50' : 'text-emerald-700'}`}>
+              <Badge variant="outline" className={`ml-1 border-emerald-200 bg-emerald-50 whitespace-nowrap ${activeSeason.current_stage === 'FINAL' ? 'text-purple-700 border-purple-200 bg-purple-50' : 'text-emerald-700'}`}>
                 {activeSeason.name} {activeSeason.current_stage === 'FINAL' ? '(ファイナル)' : '(レギュラー)'}
               </Badge>
             )}
             {!activeSeason && (
-              <Badge variant="destructive" className="ml-1">
-                有効なシーズンがありません
+              <Badge variant="destructive" className="ml-1 whitespace-nowrap">
+                有効なシーズンなし
               </Badge>
             )}
           </div>
-          <Button
-            variant={showPenaltyInput ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowPenaltyInput(!showPenaltyInput)}
-            className={`text-xs h-8 ${showPenaltyInput ? "bg-red-500 hover:bg-red-600" : ""}`}
-          >
-            <Settings2 className="w-3 h-3 mr-1" />
-            ペナルティ入力
-          </Button>
         </CardTitle>
         <CardDescription className="text-xs sm:text-sm">
           プレイヤーを4人選択して、持ち点を入力してください。 ※百の位以上を入力 29,700点の場合「297」
@@ -261,7 +252,7 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
                     </Badge>
                     <span className="text-xs text-muted-foreground">({teamPlayers.length}人)</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 sm:gap-2">
                     {teamPlayers.map((teamPlayer) => {
                       const isSelected = players.some((p) => p.name === teamPlayer.name)
                       const availableSlot = players.findIndex((p) => p.name === "")
@@ -283,11 +274,11 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
                             }
                           }}
                           disabled={!isSelected && !canSelect}
-                          className={`text-xs h-10 justify-start border-2 transition-all duration-200 ${isSelected
-                            ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 border-blue-500 shadow-lg"
+                          className={`text-xs h-9 sm:h-10 justify-start border px-2 sm:px-3 transition-all duration-200 ${isSelected
+                            ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 border-blue-500 shadow-md"
                             : canSelect
-                              ? "hover:bg-blue-50 hover:border-blue-300"
-                              : "opacity-50 cursor-not-allowed"
+                              ? "hover:bg-blue-50/50 hover:border-blue-300 bg-white"
+                              : "opacity-40 cursor-not-allowed bg-slate-50"
                             }`}
                         >
                           <div className="flex items-center gap-1 w-full">
@@ -308,9 +299,20 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
 
         {/* 選択されたプレイヤーと持ち点入力エリア */}
         <div ref={pointsInputRef} className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium text-slate-700">持ち点を入力</Label>
-            <div className="text-xs text-muted-foreground">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <Label className="text-sm font-medium text-slate-700">持ち点を入力</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPenaltyInput(!showPenaltyInput)}
+                className={`text-[10px] sm:text-xs h-6 sm:h-7 px-2 transition-colors ${showPenaltyInput ? "bg-red-50 text-red-600 hover:bg-red-100 font-medium" : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"}`}
+              >
+                <Settings2 className="w-3 h-3 mr-1" />
+                ペナルティ
+              </Button>
+            </div>
+            <div className="text-[10px] sm:text-xs text-muted-foreground">
               {players.filter((p) => p.name !== "").length === 4 ? (
                 <span className="text-green-600 font-medium">✓ プレイヤー選択完了</span>
               ) : (
@@ -322,12 +324,12 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
           <div className="space-y-3">
             {players.map((player, index) => (
               <div key={index} className="space-y-1">
-                <div className="flex gap-2">
-                  <div className="flex-1">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="flex-1 min-w-[120px]">
                     <div
-                      className={`flex items-center gap-2 p-3 border-2 rounded-xl min-h-[40px] sm:min-h-[48px] backdrop-blur-sm transition-all duration-200 ${player.name
-                        ? "bg-white/70 border-green-200 hover:bg-white/80"
-                        : "bg-white/30 border-gray-200 hover:bg-white/40"
+                      className={`flex items-center gap-1 sm:gap-2 p-2 sm:p-3 border rounded-lg min-h-[40px] sm:min-h-[48px] backdrop-blur-sm transition-all duration-200 ${player.name
+                        ? "bg-white/90 border-green-300 shadow-sm"
+                        : "bg-white/50 border-gray-200 border-dashed hover:bg-white/80"
                         }`}
                     >
                       {player.name ? (
@@ -349,14 +351,14 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2 relative">
+                  <div className="flex gap-1 sm:gap-2 shrink-0">
                     <Input
                       type="number"
-                      placeholder="持ち点"
+                      placeholder="点数(百)"
                       value={player.score / 100 || ""}
                       onChange={(e) => updatePlayerScore(index, Number.parseInt(e.target.value) || 0)}
                       disabled={!player.name}
-                      className={`w-20 sm:w-32 text-xs sm:text-sm h-10 sm:h-12 border-2 transition-colors duration-200 ${player.name ? "focus:border-blue-500 bg-white" : "bg-gray-50 border-gray-200 cursor-not-allowed"
+                      className={`w-[70px] sm:w-[100px] text-xs sm:text-sm h-10 sm:h-12 border transition-colors duration-200 text-right px-2 ${player.name ? "focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 bg-white" : "bg-gray-50 border-gray-200 cursor-not-allowed"
                         }`}
                     />
 
@@ -364,7 +366,7 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
                       <div className="relative flex items-center">
                         <Input
                           type="number"
-                          placeholder="ペナルティ"
+                          placeholder="ペナ"
                           value={player.penaltyPoints || ""}
                           onChange={(e) => {
                             const val = Number.parseInt(e.target.value, 10) || 0;
@@ -373,14 +375,9 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
                           disabled={!player.name}
                           step="1"
                           max="0"
-                          className={`w-20 sm:w-28 text-xs sm:text-sm h-10 sm:h-12 border-2 border-red-200 focus:border-red-500 transition-colors duration-200 ${player.name ? (player.penaltyPoints !== 0 ? "bg-red-50/50" : "bg-white") : "bg-gray-50 border-gray-200 cursor-not-allowed"
+                          className={`w-[60px] sm:w-[80px] text-xs sm:text-sm h-10 sm:h-12 border border-red-200 focus:border-red-500 transition-colors duration-200 text-right px-2 ${player.name ? (player.penaltyPoints !== 0 ? "bg-red-50/80 text-red-600 font-bold" : "bg-white") : "bg-gray-50 border-gray-200 cursor-not-allowed"
                             }`}
                         />
-                        {player.penaltyPoints !== 0 && (
-                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full z-10 font-bold whitespace-nowrap shadow-sm">
-                            Pt
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>
@@ -396,17 +393,18 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
           </div>
         )}
 
-        <div className={`flex items-center justify-between p-4 rounded-xl border ${!activeSeason ? "bg-slate-100 border-slate-200 opacity-70" : "bg-gradient-to-r from-slate-50 to-blue-50 border-slate-200"}`}>
-          <div className="text-xs sm:text-sm">
-            <span className="text-muted-foreground">持ち点合計: </span>
-            <span className={`font-bold ${currentTotal === 100000 ? "text-green-600" : "text-red-600"}`}>
-              {currentTotal.toLocaleString()}点
+        {/* 保存ボタン (スマホ時モバイルフッター固定) */}
+        <div className={`sticky bottom-0 z-20 mt-4 flex items-center justify-between p-3 sm:p-4 rounded-xl border shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05),0_4px_6px_-2px_rgba(0,0,0,0.05)] sm:shadow-md ${!activeSeason ? "bg-slate-100/95 border-slate-200 opacity-80" : "bg-white/95 sm:bg-gradient-to-r sm:from-slate-50 sm:to-blue-50 border-slate-200 backdrop-blur-md"}`}>
+          <div className="text-xs sm:text-sm flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+            <span className="text-muted-foreground font-medium">合計:</span>
+            <span className={`font-black text-sm sm:text-lg tabular-nums tracking-tighter ${currentTotal === 100000 ? "text-emerald-600" : "text-rose-500"}`}>
+              {currentTotal.toLocaleString()} <span className="text-[10px] sm:text-xs text-muted-foreground font-normal">点</span>
             </span>
           </div>
           <Button
             onClick={saveGameResult}
             disabled={!activeSeason || currentTotal !== 100000 || players.some((p) => p.name === "")}
-            className="text-xs sm:text-sm h-10 sm:h-12 px-6 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
+            className="text-xs sm:text-sm h-10 sm:h-12 px-6 sm:px-8 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md font-bold shrink-0"
           >
             成績を保存
           </Button>
