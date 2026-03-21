@@ -92,3 +92,9 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Prevent layout shift caused by Radix UI scroll-locking on mobile */
+body[data-scroll-locked] {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}

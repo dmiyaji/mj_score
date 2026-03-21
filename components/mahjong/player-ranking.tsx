@@ -163,60 +163,61 @@ export default function PlayerRanking({ teams, playerStats, seasons = [], onLoad
       </CardHeader>
       <CardContent className="p-6">
         {/* フィルター */}
-        <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-4 sm:mb-6">
-          {/* シーズンフィルター */}
-          <div className="flex items-center gap-2">
-            <Label className="text-xs sm:text-sm font-medium whitespace-nowrap">シーズン:</Label>
-            <Select value={seasonId} onValueChange={(val) => setSeasonId(val)}>
-              <SelectTrigger className="h-10 w-[180px] text-xs sm:text-sm border-2 focus:border-blue-500">
-                <SelectValue placeholder="シーズンを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs sm:text-sm">すべて (全期間)</SelectItem>
-                {seasons.map((s) => (
-                  <SelectItem key={s.id} value={s.id} className="text-xs sm:text-sm">
-                    {s.name} {s.is_active && "(現在)"}
+        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            {/* シーズンフィルター */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Label className="text-sm font-medium whitespace-nowrap hidden sm:block">シーズン:</Label>
+              <Select value={seasonId} onValueChange={(val) => setSeasonId(val)}>
+                <SelectTrigger className="h-10 flex-1 sm:w-[180px] text-base sm:text-sm border-2 focus:border-blue-500">
+                  <SelectValue placeholder="シーズンを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-base sm:text-sm">すべて (全期間)</SelectItem>
+                  {seasons.map((s) => (
+                    <SelectItem key={s.id} value={s.id} className="text-base sm:text-sm">
+                      {s.name} {s.is_active && "(現在)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={stage} onValueChange={(val: "REGULAR" | "FINAL") => setStage(val)} disabled={seasonId === "all"}>
+                <SelectTrigger className="h-10 w-[110px] sm:w-[120px] text-base sm:text-sm border-2 focus:border-blue-500 shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="REGULAR" className="text-base sm:text-sm text-blue-600 font-medium">レギュラー</SelectItem>
+                  <SelectItem value="FINAL" className="text-base sm:text-sm text-purple-600 font-medium">ファイナル</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* チームフィルター */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Label htmlFor="team-filter" className="text-sm font-medium whitespace-nowrap hidden sm:block">
+                チーム:
+              </Label>
+              <Select value={teamFilter} onValueChange={setTeamFilter}>
+                <SelectTrigger
+                  id="team-filter"
+                  className="h-10 flex-1 sm:w-48 text-base sm:text-sm border-2 focus:border-blue-500"
+                >
+                  <SelectValue placeholder="チームを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-base sm:text-sm">
+                    すべてのチーム
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={stage} onValueChange={(val: "REGULAR" | "FINAL") => setStage(val)} disabled={seasonId === "all"}>
-              <SelectTrigger className="h-10 w-[120px] text-xs sm:text-sm border-2 focus:border-blue-500">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="REGULAR" className="text-xs sm:text-sm text-blue-600 font-medium">レギュラー</SelectItem>
-                <SelectItem value="FINAL" className="text-xs sm:text-sm text-purple-600 font-medium">ファイナル</SelectItem>
-              </SelectContent>
-            </Select>
+                  {teams.map((team) => (
+                    <SelectItem key={team.id} value={team.id} className="text-base sm:text-sm">
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-
-          {/* チームフィルター */}
-          <div className="flex items-center gap-2">
-            <Label htmlFor="team-filter" className="text-xs sm:text-sm font-medium whitespace-nowrap">
-              チーム:
-            </Label>
-            <Select value={teamFilter} onValueChange={setTeamFilter}>
-              <SelectTrigger
-                id="team-filter"
-                className="w-32 sm:w-48 text-xs sm:text-sm h-10 border-2 focus:border-blue-500"
-              >
-                <SelectValue placeholder="チームを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs sm:text-sm">
-                  すべてのチーム
-                </SelectItem>
-                {teams.map((team) => (
-                  <SelectItem key={team.id} value={team.id} className="text-xs sm:text-sm">
-                    {team.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
         </div>
 
         {playerStats.length === 0 ? (
@@ -242,26 +243,26 @@ export default function PlayerRanking({ teams, playerStats, seasons = [], onLoad
                     <SortableHeader sortKey="game_count" className="w-8 sm:w-12" align="right">
                       G数
                     </SortableHeader>
-                    <SortableHeader sortKey="average_points" className="w-12 sm:w-16" align="right">
+                    <SortableHeader sortKey="average_points" className="hidden sm:table-cell w-12 sm:w-16" align="right">
                       平均
                     </SortableHeader>
-                    <SortableHeader sortKey="average_rank" className="w-12 sm:w-16" align="right">
+                    <SortableHeader sortKey="average_rank" className="hidden sm:table-cell w-12 sm:w-16" align="right">
                       平着
                     </SortableHeader>
-                    <SortableHeader sortKey="wins" className="w-6 sm:w-8" align="right">
+                    <SortableHeader sortKey="wins" className="hidden sm:table-cell w-6 sm:w-8" align="right">
                       1着
                     </SortableHeader>
-                    <SortableHeader sortKey="seconds" className="w-6 sm:w-8" align="right">
+                    <SortableHeader sortKey="seconds" className="hidden sm:table-cell w-6 sm:w-8" align="right">
                       2着
                     </SortableHeader>
-                    <SortableHeader sortKey="thirds" className="w-6 sm:w-8" align="right">
+                    <SortableHeader sortKey="thirds" className="hidden sm:table-cell w-6 sm:w-8" align="right">
                       3着
                     </SortableHeader>
-                    <SortableHeader sortKey="fourths" className="w-6 sm:w-8" align="right">
+                    <SortableHeader sortKey="fourths" className="hidden sm:table-cell w-6 sm:w-8" align="right">
                       4着
                     </SortableHeader>
-                    <TableHead className="w-10 sm:w-14 text-right text-xs p-2 font-semibold">トップ率</TableHead>
-                    <TableHead className="w-10 sm:w-14 text-right text-xs p-2 font-semibold">ラス回避</TableHead>
+                    <TableHead className="hidden sm:table-cell w-10 sm:w-14 text-right text-xs p-2 font-semibold">トップ率</TableHead>
+                    <TableHead className="hidden sm:table-cell w-10 sm:w-14 text-right text-xs p-2 font-semibold">ラス回避</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -297,18 +298,18 @@ export default function PlayerRanking({ teams, playerStats, seasons = [], onLoad
                         </TableCell>
                         <TableCell className="text-right text-xs p-2">{player.game_count}</TableCell>
                         <TableCell
-                          className={`text-right text-xs p-2 ${player.average_points > 0 ? "text-green-600" : player.average_points < 0 ? "text-red-600" : ""
+                          className={`hidden sm:table-cell text-right text-xs p-2 ${player.average_points > 0 ? "text-green-600" : player.average_points < 0 ? "text-red-600" : ""
                             }`}
                         >
                           {formatPoints(player.average_points)}
                         </TableCell>
-                        <TableCell className="text-right text-xs p-2">{formatAverageRank(player.average_rank)}</TableCell>
-                        <TableCell className="text-right text-xs p-2 font-medium">{player.wins}</TableCell>
-                        <TableCell className="text-right text-xs p-2">{player.seconds}</TableCell>
-                        <TableCell className="text-right text-xs p-2">{player.thirds}</TableCell>
-                        <TableCell className="text-right text-xs p-2">{player.fourths}</TableCell>
-                        <TableCell className="text-right text-xs p-2">{topRate}%</TableCell>
-                        <TableCell className="text-right text-xs p-2">{fourthAvoidanceRate}%</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right text-xs p-2">{formatAverageRank(player.average_rank)}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right text-xs p-2 font-medium">{player.wins}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right text-xs p-2">{player.seconds}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right text-xs p-2">{player.thirds}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right text-xs p-2">{player.fourths}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right text-xs p-2">{topRate}%</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right text-xs p-2">{fourthAvoidanceRate}%</TableCell>
                       </TableRow>
                     );
                   })}
