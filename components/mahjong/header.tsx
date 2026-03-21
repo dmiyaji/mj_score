@@ -92,15 +92,9 @@ export default function Header({
   const adminMenuItems = [
     {
       id: "playerManagement",
-      label: "プレイヤー管理",
-      icon: User,
-      description: "プレイヤーの追加・編集・削除",
-    },
-    {
-      id: "teamManagement",
-      label: "チーム管理",
+      label: "チーム・プレイヤー管理",
       icon: Users,
-      description: "チームの作成・編集・削除",
+      description: "チーム・プレイヤーの追加・編集・削除",
     },
     {
       id: "gameHistory",

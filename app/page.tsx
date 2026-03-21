@@ -8,7 +8,6 @@ import ScoreInputForm from "@/components/mahjong/score-input-form"
 import PlayerRanking from "@/components/mahjong/player-ranking"
 import TeamRanking from "@/components/mahjong/team-ranking"
 import PlayerManagement from "@/components/mahjong/player-management"
-import TeamManagement from "@/components/mahjong/team-management"
 import GameHistory from "@/components/mahjong/game-history"
 import DataManagement from "@/components/mahjong/data-management"
 import SeasonManagement from "@/components/mahjong/season-management"
@@ -33,7 +32,6 @@ export default function MahjongScoreManager() {
     | "playerRanking"
     | "teamRanking"
     | "playerManagement"
-    | "teamManagement"
     | "gameHistory"
     | "dataManagement"
     | "seasonManagement"
@@ -143,10 +141,6 @@ export default function MahjongScoreManager() {
 
         {currentView === "playerManagement" && (
           <PlayerManagement teams={teams} registeredPlayers={registeredPlayers} onDataUpdate={loadData} />
-        )}
-
-        {currentView === "teamManagement" && (
-          <TeamManagement teams={teams} registeredPlayers={registeredPlayers} onDataUpdate={loadData} />
         )}
 
         {currentView === "gameHistory" && (
