@@ -137,19 +137,6 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
     return name.length > maxLength ? `${name.slice(0, maxLength)}...` : name
   }
 
-  // 順位に応じたアイコンを取得
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return <Crown className="w-4 h-4 text-yellow-500" />
-      case 2:
-        return <Medal className="w-4 h-4 text-gray-400" />
-      case 3:
-        return <Star className="w-4 h-4 text-amber-600" />
-      default:
-        return null
-    }
-  }
 
   return (
     <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
@@ -215,10 +202,7 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
                     <SortableHeader sortKey="game_count" className="w-8 sm:w-12" align="right">
                       G数
                     </SortableHeader>
-                    <SortableHeader sortKey="average_points" className="hidden sm:table-cell w-12 sm:w-16" align="right">
-                      平均
-                    </SortableHeader>
-                    <SortableHeader sortKey="average_rank" className="hidden sm:table-cell w-12 sm:w-16" align="right">
+                    <SortableHeader sortKey="average_rank" className="w-12 sm:w-16" align="right">
                       平着
                     </SortableHeader>
                     <SortableHeader sortKey="wins" className="hidden sm:table-cell w-6 sm:w-8" align="right">
@@ -243,7 +227,6 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
                     >
                       <TableCell className="font-medium text-xs p-2">
                         <div className="flex items-center gap-1">
-                          {getRankIcon(team.fixed_rank)}
                           <span className={team.fixed_rank <= 3 ? "font-bold" : ""}>{team.fixed_rank}</span>
                         </div>
                       </TableCell>
@@ -261,13 +244,7 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
                         {formatPoints(team.total_points)}
                       </TableCell>
                       <TableCell className="text-right text-xs p-2">{team.game_count}</TableCell>
-                      <TableCell
-                        className={`hidden sm:table-cell text-right text-xs p-2 ${team.average_points > 0 ? "text-green-600" : team.average_points < 0 ? "text-red-600" : ""
-                          }`}
-                      >
-                        {formatPoints(team.average_points)}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-right text-xs p-2">{formatAverageRank(team.average_rank)}</TableCell>
+                      <TableCell className="text-right text-xs p-2">{formatAverageRank(team.average_rank)}</TableCell>
                       <TableCell className="hidden sm:table-cell text-right text-xs p-2 font-medium">{team.wins}</TableCell>
                       <TableCell className="hidden sm:table-cell text-right text-xs p-2">{team.seconds}</TableCell>
                       <TableCell className="hidden sm:table-cell text-right text-xs p-2">{team.thirds}</TableCell>

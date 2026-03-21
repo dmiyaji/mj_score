@@ -136,19 +136,6 @@ export default function PlayerRanking({ teams, playerStats, seasons = [], onLoad
     return name.length > maxLength ? `${name.slice(0, maxLength)}...` : name
   }
 
-  // 順位に応じたアイコンを取得
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return <Crown className="w-4 h-4 text-yellow-500" />
-      case 2:
-        return <Medal className="w-4 h-4 text-gray-400" />
-      case 3:
-        return <Star className="w-4 h-4 text-amber-600" />
-      default:
-        return null
-    }
-  }
 
   return (
     <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
@@ -234,19 +221,13 @@ export default function PlayerRanking({ teams, playerStats, seasons = [], onLoad
                     <SortableHeader sortKey="name" className="w-16 sm:w-24">
                       プレイヤー
                     </SortableHeader>
-                    <SortableHeader sortKey="team_name" className="w-12 sm:w-20">
-                      チーム
-                    </SortableHeader>
                     <SortableHeader sortKey="total_points" className="w-12 sm:w-16" align="right">
                       累計
                     </SortableHeader>
                     <SortableHeader sortKey="game_count" className="w-8 sm:w-12" align="right">
                       G数
                     </SortableHeader>
-                    <SortableHeader sortKey="average_points" className="hidden sm:table-cell w-12 sm:w-16" align="right">
-                      平均
-                    </SortableHeader>
-                    <SortableHeader sortKey="average_rank" className="hidden sm:table-cell w-12 sm:w-16" align="right">
+                    <SortableHeader sortKey="average_rank" className="w-12 sm:w-16" align="right">
                       平着
                     </SortableHeader>
                     <SortableHeader sortKey="wins" className="hidden sm:table-cell w-6 sm:w-8" align="right">
@@ -276,18 +257,12 @@ export default function PlayerRanking({ teams, playerStats, seasons = [], onLoad
                       >
                         <TableCell className="font-medium text-xs p-2">
                           <div className="flex items-center gap-1">
-                            {getRankIcon(player.fixed_rank)}
                             <span className={player.fixed_rank <= 3 ? "font-bold" : ""}>{player.fixed_rank}</span>
                           </div>
                         </TableCell>
                         <TableCell className="font-medium text-xs p-2">
-                          <span className="truncate block" title={player.name}>
+                          <Badge className={`px-2 py-1 rounded-md text-[10px] sm:text-xs border ${player.team_color} inline-block max-w-[120px] truncate`} title={player.name}>
                             {truncateName(player.name, 8)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-xs p-2">
-                          <Badge className={`px-2 py-1 rounded-full text-[10px] sm:text-xs border ${player.team_color}`}>
-                            {truncateName(player.team_name, 4)}
                           </Badge>
                         </TableCell>
                         <TableCell
@@ -297,13 +272,7 @@ export default function PlayerRanking({ teams, playerStats, seasons = [], onLoad
                           {formatPoints(player.total_points)}
                         </TableCell>
                         <TableCell className="text-right text-xs p-2">{player.game_count}</TableCell>
-                        <TableCell
-                          className={`hidden sm:table-cell text-right text-xs p-2 ${player.average_points > 0 ? "text-green-600" : player.average_points < 0 ? "text-red-600" : ""
-                            }`}
-                        >
-                          {formatPoints(player.average_points)}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-right text-xs p-2">{formatAverageRank(player.average_rank)}</TableCell>
+                        <TableCell className="text-right text-xs p-2">{formatAverageRank(player.average_rank)}</TableCell>
                         <TableCell className="hidden sm:table-cell text-right text-xs p-2 font-medium">{player.wins}</TableCell>
                         <TableCell className="hidden sm:table-cell text-right text-xs p-2">{player.seconds}</TableCell>
                         <TableCell className="hidden sm:table-cell text-right text-xs p-2">{player.thirds}</TableCell>
