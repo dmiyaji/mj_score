@@ -119,32 +119,110 @@ export default function Header({
   return (
     <div className="mb-6 sm:mb-8 relative">
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 sm:p-8">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-white rounded-xl shadow-lg border border-gray-100">
-            <img
-              src="/images/nine-league-logo.webp"
-              alt="Nine League Logo"
-              className="w-12 h-12 sm:w-16 sm:h-16 object-contain"
-            />
-          </div>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              ナインリーグ成績入力
-            </h1>
+        <div className="flex items-center justify-between gap-2 sm:gap-3 mb-4">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="p-1.5 sm:p-2 bg-white rounded-lg sm:rounded-xl shadow-lg border border-gray-100 shrink-0">
+              <img
+                src="/images/nine-league-logo.webp"
+                alt="Nine League Logo"
+                className="w-9 h-9 sm:w-16 sm:h-16 object-contain"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-[16px] sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-[1.15] sm:leading-normal tracking-tight">
+                <span className="block sm:inline">ナインリーグ</span>
+                <span className="block sm:inline">成績入力</span>
+              </h1>
+            </div>
           </div>
 
           {/* 右上のメニューエリア */}
-          <div className="flex gap-2 relative">
-            {/* 公開ランキングボタン */}
-            <Dialog open={isPublicRankingDialogOpen} onOpenChange={setIsPublicRankingDialogOpen}>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+
+            {/* 管理者メニューボタン */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)}
+              className="h-10 w-10 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-all duration-200"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* 基本タブ（成績入力、プレイヤー、チーム） */}
+        <div className="w-full overflow-x-auto">
+          <Tabs value={currentView} onValueChange={onTabChange}>
+            <TabsList className="grid grid-cols-3 w-full bg-white/50 backdrop-blur-sm border border-white/20">
+              <TabsTrigger
+                value="input"
+                className="text-xs sm:text-sm px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
+              >
+                成績入力
+              </TabsTrigger>
+              <TabsTrigger
+                value="playerRanking"
+                className="text-xs sm:text-sm px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
+              >
+                個人ランキング
+              </TabsTrigger>
+              <TabsTrigger
+                value="teamRanking"
+                className="text-xs sm:text-sm px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
+              >
+                チームランキング
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      </div>
+
+      {/* 管理者メニューのスライドイン */}
+      <div
+        className={`absolute top-0 right-0 z-50 transition-all duration-300 ease-in-out ${isAdminMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
+          }`}
+      >
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-4 min-w-[280px] mt-2">
+          {/* ヘッダー */}
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-semibold text-gray-700">管理者メニュー</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAdminMenuOpen(false)}
+              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 rounded-full"
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+
+          {/* メニューアイテム */}
+          <div className="space-y-2">
+            {/* 公開用ランキング生成 */}
+            <Dialog open={isPublicRankingDialogOpen} onOpenChange={(open) => {
+              setIsPublicRankingDialogOpen(open)
+              // ダイアログが開くときに管理者メニューの親パネルを閉じる
+              if (open) setIsAdminMenuOpen(false)
+            }}>
               <DialogTrigger asChild>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs sm:text-sm h-10 border-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+                  variant="ghost"
+                  className="w-full justify-start text-left p-3 h-auto hover:bg-green-50 transition-all duration-200 group"
                 >
-                  <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  公開用ランキング生成
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="p-1.5 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors duration-200">
+                      <Share2 className="w-4 h-4 text-green-600 group-hover:text-green-700" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-gray-700 group-hover:text-green-700">公開ランキング生成</div>
+                      <div className="text-[10px] text-gray-500 truncate">外部シェア用の専用画面を作成</div>
+                    </div>
+                    <ChevronRight className="w-3 h-3 text-gray-400 group-hover:text-green-500 transition-colors duration-200" />
+                  </div>
                 </Button>
               </DialogTrigger>
               <DialogContent className="w-[90vw] max-w-md bg-white/95 backdrop-blur-sm border border-white/20">
@@ -215,69 +293,6 @@ export default function Header({
               </DialogContent>
             </Dialog>
 
-            {/* 管理者メニューボタン */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)}
-              className="h-10 w-10 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-all duration-200"
-            >
-              <Settings className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* 基本タブ（成績入力、プレイヤー、チーム） */}
-        <div className="w-full overflow-x-auto">
-          <Tabs value={currentView} onValueChange={onTabChange}>
-            <TabsList className="grid grid-cols-3 w-full bg-white/50 backdrop-blur-sm border border-white/20">
-              <TabsTrigger
-                value="input"
-                className="text-xs sm:text-sm px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
-              >
-                成績入力
-              </TabsTrigger>
-              <TabsTrigger
-                value="playerRanking"
-                className="text-xs sm:text-sm px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
-              >
-                個人ランキング
-              </TabsTrigger>
-              <TabsTrigger
-                value="teamRanking"
-                className="text-xs sm:text-sm px-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-200"
-              >
-                チームランキング
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
-
-      {/* 管理者メニューのスライドイン */}
-      <div
-        className={`absolute top-0 right-0 z-50 transition-all duration-300 ease-in-out ${isAdminMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
-          }`}
-      >
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-4 min-w-[280px] mt-2">
-          {/* ヘッダー */}
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-            <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-semibold text-gray-700">管理者メニュー</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsAdminMenuOpen(false)}
-              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 rounded-full"
-            >
-              <X className="w-3 h-3" />
-            </Button>
-          </div>
-
-          {/* メニューアイテム */}
-          <div className="space-y-2">
             {adminMenuItems.map((item) => {
               const Icon = item.icon
               return (

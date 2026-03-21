@@ -85,10 +85,10 @@ export default function MahjongScoreManager() {
   if (currentView === "publicRanking") {
     return (
       <div className="relative">
-        <div className="absolute top-4 left-4 z-50">
+        <div className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-50">
           <button
             onClick={() => setCurrentView("teamRanking")}
-            className="px-4 py-2 bg-white/90 backdrop-blur-sm border-2 hover:bg-white transition-all duration-200 rounded-lg text-sm"
+            className="px-4 py-2 bg-slate-900/60 text-slate-300 hover:bg-slate-800 hover:text-white backdrop-blur-md border border-slate-700 transition-all duration-300 rounded-lg text-xs sm:text-sm shadow-lg"
           >
             ← 管理画面に戻る
           </button>
