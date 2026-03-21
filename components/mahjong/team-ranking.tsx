@@ -153,7 +153,7 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
 
   return (
     <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
-      <CardHeader className="pb-3 sm:pb-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-lg">
+      <CardHeader className="pb-3 sm:pb-6 landscape:pb-2 bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-lg">
         <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
           <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg shadow-lg">
             <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -162,9 +162,9 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
         </CardTitle>
         <CardDescription className="text-xs sm:text-sm">チーム別の通算成績（累計ポイント順）</CardDescription>
       </CardHeader>
-      <CardContent className="p-6">
+      <CardContent className="p-6 landscape:p-3">
         {/* 期間・シーズンフィルター */}
-        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+        <div className="flex flex-col gap-3 mb-4 sm:mb-6 landscape:mb-3">
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Label className="text-sm font-medium whitespace-nowrap hidden sm:block">シーズン:</Label>

@@ -204,8 +204,8 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
   const activeSeason = seasons.find(s => s.is_active)
 
   return (
-    <Card className="mb-4 sm:mb-8 bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
-      <CardHeader className="pb-3 sm:pb-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
+    <Card className="mb-4 sm:mb-8 landscape:mb-2 bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
+      <CardHeader className="pb-3 sm:pb-6 landscape:pb-2 bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
         <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3 sm:gap-2 text-lg sm:text-xl">
           <div className="flex flex-wrap items-center gap-2">
             <div className="p-1.5 sm:p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-sm">
@@ -228,7 +228,7 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
           プレイヤーを4人選択して、持ち点を入力してください。 ※百の位以上を入力 29,700点の場合「297」
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-6 landscape:space-y-3 p-4 sm:p-6 landscape:p-3">
         {/* プレイヤー選択エリア */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -394,7 +394,7 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
         )}
 
         {/* 保存ボタン (スマホ時モバイルフッター固定) */}
-        <div className={`sticky bottom-0 z-20 mt-4 flex items-center justify-between p-3 sm:p-4 rounded-xl border shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05),0_4px_6px_-2px_rgba(0,0,0,0.05)] sm:shadow-md ${!activeSeason ? "bg-slate-100/95 border-slate-200 opacity-80" : "bg-white/95 sm:bg-gradient-to-r sm:from-slate-50 sm:to-blue-50 border-slate-200 backdrop-blur-md"}`}>
+        <div className={`sticky bottom-0 z-20 mt-4 landscape:mt-2 flex items-center justify-between p-3 sm:p-4 landscape:p-2 rounded-xl border shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05),0_4px_6px_-2px_rgba(0,0,0,0.05)] sm:shadow-md ${!activeSeason ? "bg-slate-100/95 border-slate-200 opacity-80" : "bg-white/95 sm:bg-gradient-to-r sm:from-slate-50 sm:to-blue-50 border-slate-200 backdrop-blur-md"}`}>
           <div className="text-xs sm:text-sm flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
             <span className="text-muted-foreground font-medium">合計:</span>
             <span className={`font-black text-sm sm:text-lg tabular-nums tracking-tighter ${currentTotal === 100000 ? "text-emerald-600" : "text-rose-500"}`}>
