@@ -17,6 +17,7 @@ interface TeamStatsWithDiff extends TeamStats {
   session_points: number
   point_diff_from_above: number
   remaining_games: number
+  total_games: number
 }
 
 export default function PublicRanking({
@@ -83,6 +84,7 @@ export default function PublicRanking({
           session_points: sessionPoints,
           point_diff_from_above: pointDiffFromAbove,
           remaining_games: remainingGames,
+          total_games: totalGamesForStage,
         }
       })
 
@@ -133,18 +135,18 @@ export default function PublicRanking({
 
       <div className="max-w-[1200px] mx-auto relative z-10">
         {/* ヘッダー */}
-        <div className="mb-8 sm:mb-12 text-center animate-in fade-in zoom-in-95 duration-1000">
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-cyan-200 tracking-wider mb-2 drop-shadow-lg italic pr-2">
+        <div className="mb-8 sm:mb-12 text-center animate-in fade-in zoom-in-95 duration-1000 flex flex-col items-center gap-1 sm:gap-2">
+          {activeSeasonName && (
+            <div className="text-xl sm:text-2xl md:text-3xl font-bold text-cyan-400 whitespace-nowrap tracking-wide drop-shadow-none">
+              [{activeSeasonName} {activeStage}]
+            </div>
+          )}
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-cyan-200 tracking-wider mb-2 drop-shadow-lg italic pr-2 whitespace-nowrap flex items-center justify-center">
             {title}
-            {activeSeasonName && (
-              <span className="text-xl sm:text-2xl md:text-3xl font-bold text-cyan-400 block sm:inline sm:ml-4 not-italic font-normal tracking-wide drop-shadow-none">
-                [{activeSeasonName} {activeStage}]
-              </span>
-            )}
             <span className="text-cyan-400/80 mx-2 sm:mx-4 not-italic font-light">/</span>
-            {format(date, "yyyy.MM.dd", { locale: ja })}
+            <span className="not-italic">{format(date, "yyyy.MM.dd", { locale: ja })}</span>
           </h1>
-          <div className="w-32 h-1 mx-auto bg-gradient-to-r from-transparent via-cyan-500 to-transparent mt-4 md:mt-6"></div>
+          <div className="w-32 h-1 mx-auto bg-gradient-to-r from-transparent via-cyan-500 to-transparent mt-2 md:mt-4"></div>
         </div>
 
         {/* ランキングテーブルエリア */}
@@ -159,20 +161,28 @@ export default function PublicRanking({
           )}
 
           {/* テーブル・パネルコンテナ */}
-          <div className="relative z-10 space-y-3 sm:space-y-4">
-            {/* ヘッダー（デスクトップ専用） */}
-            <div className="hidden lg:grid grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-2 p-2 text-sm font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800/80 mb-4 px-4">
-              <div className="text-center">RANK</div>
-              <div className="text-left pl-6">TEAM</div>
-              <div className="text-center">GAMES</div>
-              <div className="text-right pr-4 text-cyan-400">TOTAL PT</div>
-              <div className="text-right">DIFF</div>
-              <div className="text-right pr-4">TODAY</div>
-              <div className="text-center">REMAIN</div>
-              <div className="text-center tracking-widest pl-2">1-2-3-4</div>
+          <div className="relative z-10 space-y-2 sm:space-y-4">
+            {/* ヘッダー（スマホ/PC共通・レスポンシブ） */}
+            <div className="flex items-center lg:grid lg:grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-1 sm:gap-2 lg:gap-2 px-1 sm:px-4 lg:px-4 pb-1 sm:pb-2 text-[10px] sm:text-xs lg:text-sm font-bold text-slate-400 border-b border-slate-800/80 mb-2 sm:mb-4 lg:tracking-wider">
+              {/* RANK/TEAM（非表示のダミー幅でヘッダー位置を合わせる） */}
+              <div className="w-10 sm:w-14 lg:w-auto opacity-0 pointer-events-none text-center lg:order-1">#</div>
+              <div className="flex-1 lg:pl-6 opacity-0 pointer-events-none pl-1 sm:pl-2 lg:order-2">TEAM</div>
+
+              {/* PC用 残りのヘッダー (日本語化) */}
+              <div className="hidden lg:block text-center lg:order-3">試合数</div>
+              <div className="hidden lg:block text-right pr-4 text-cyan-400 lg:order-4">トータルポイント</div>
+              <div className="hidden lg:block text-right lg:order-5">ポイント差</div>
+              <div className="hidden lg:block text-right pr-4 lg:order-6">今節</div>
+              <div className="hidden lg:block text-center lg:order-7">残試合</div>
+              <div className="hidden lg:block text-center pl-2 lg:order-8">着順分布</div>
+
+              {/* スマホ用 表示項目ヘッダー */}
+              <div className="w-[65px] sm:w-[90px] text-center lg:hidden text-cyan-400 leading-[1.1]">トータル<br />ポイント</div>
+              <div className="w-[45px] sm:w-[70px] text-center lg:hidden leading-[1.1]">ポイント<br />差</div>
+              <div className="w-[50px] sm:w-[60px] text-center lg:hidden leading-[1.1]">試合数</div>
             </div>
 
-            {/* データ行（スタッガードアニメーションによるパネル表示） */}
+            {/* データ行 */}
             {teamStats.map((team, index) => {
               // 順位ごとの専用色・装飾
               const rankColor =
@@ -189,90 +199,77 @@ export default function PublicRanking({
               return (
                 <div
                   key={team.id}
-                  className={`group relative grid grid-cols-[60px_1fr] lg:grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-2 sm:gap-4 lg:gap-2 items-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-800/80 backdrop-blur-md border border-slate-700/50 shadow-xl hover:shadow-cyan-900/20 transition-all duration-300 animate-in fade-in slide-in-from-bottom-8 fill-mode-both ${isEliminated}`}
+                  className={`group relative flex items-center lg:grid lg:grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-1 sm:gap-2 lg:gap-2 p-1.5 sm:p-3 lg:p-4 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-800/80 backdrop-blur-md border border-slate-700/50 shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-8 fill-mode-both ${isEliminated}`}
                   style={{ animationDelay: `${index * 80}ms`, animationDuration: '800ms' }}
                 >
                   {/* アニメーション用背景ハイライト */}
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/5 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-2xl"></div>
 
                   {/* チームカラーのネオンライン（左端） */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-2 sm:w-2.5 ${team.color} opacity-90 group-hover:opacity-100 group-hover:w-3 z-20 transition-all duration-300 rounded-l-xl sm:rounded-l-2xl shadow-[0_0_10px_currentColor]`}></div>
+                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 sm:w-2.5 ${team.color} opacity-90 group-hover:opacity-100 group-hover:w-2.5 z-20 transition-all duration-300 rounded-l-xl sm:rounded-l-2xl shadow-[0_0_10px_currentColor]`}></div>
                   {/* 奥のぼかしネオン */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-6 ${team.color} opacity-30 blur-xl pointer-events-none`}></div>
+                  <div className={`absolute left-0 top-0 bottom-0 w-4 lg:w-6 ${team.color} opacity-30 blur-xl pointer-events-none`}></div>
 
-                  {/* 順位ブロック */}
-                  <div className="flex justify-center z-10 relative">
-                    <div className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center font-black text-2xl sm:text-3xl lg:text-4xl shadow-inner transform -skew-x-6 sm:-skew-x-12 ${rankBg}`}>
+                  {/* 1. 順位ブロック */}
+                  <div className="flex justify-center z-10 relative flex-shrink-0 w-10 sm:w-14 lg:w-auto lg:order-1">
+                    <div className={`w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-lg lg:rounded-xl flex items-center justify-center font-black text-xl sm:text-2xl lg:text-4xl shadow-inner transform -skew-x-6 sm:-skew-x-12 ${rankBg}`}>
                       {index + 1}
                     </div>
                   </div>
 
-                  {/* チーム名ブロック */}
-                  <div className="text-left font-black text-lg sm:text-2xl lg:text-3xl tracking-wide max-w-full overflow-hidden text-ellipsis whitespace-nowrap z-10 pl-2 lg:pl-6 text-slate-100 drop-shadow-md">
+                  {/* 2. チーム名ブロック */}
+                  <div className="text-left font-black text-[14px] sm:text-xl lg:text-3xl tracking-tight lg:tracking-wide truncate flex-1 z-10 pl-1 sm:pl-2 lg:pl-6 text-slate-100 drop-shadow-md lg:order-2">
                     {team.name}
                   </div>
 
-                  {/* モバイル/デスクトップ共通データグリッド（モバイル時は2段目に回り込む） */}
-                  <div className="col-span-2 lg:col-span-6 grid grid-cols-2 lg:grid-cols-[100px_180px_120px_120px_100px_180px] gap-2 lg:gap-2 items-center w-full mt-2 lg:mt-0 z-10 text-slate-200">
-
-                    {/* 試合数 */}
-                    <div className="flex justify-between lg:justify-center items-center px-4 lg:px-0 bg-slate-800/40 lg:bg-transparent rounded lg:rounded-none py-1.5 lg:py-0 border border-slate-700/50 lg:border-none">
-                      <span className="lg:hidden text-xs text-slate-400 font-bold uppercase tracking-wider">Games</span>
-                      <span className="font-mono text-lg sm:text-xl font-bold">{team.game_count}</span>
-                    </div>
-
-                    {/* TOTAL pt (最も強調する箇所) */}
-                    <div className="flex flex-col lg:items-end justify-center px-4 lg:px-0 bg-slate-950/80 lg:bg-transparent rounded-lg lg:rounded-none py-3 lg:py-0 col-span-2 lg:col-span-1 border border-cyan-900/40 lg:border-none shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] lg:shadow-none relative overflow-hidden group/pt">
-                      {/* メタリックなハイライト */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 lg:group-hover/pt:opacity-100 transition-opacity"></div>
-                      <span className="lg:hidden text-[10px] sm:text-xs text-cyan-400 font-black mb-1 uppercase tracking-widest pl-1">Total pt</span>
-                      <div className={`font-black text-4xl sm:text-5xl lg:text-5xl tracking-tighter tabular-nums text-right w-full lg:pr-4 ${isPositive ? 'text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.5)]' : team.total_points < 0 ? 'text-rose-500 drop-shadow-[0_0_12px_rgba(244,63,94,0.5)]' : 'text-slate-300'}`}>
-                        {formatPoints(team.total_points)}
-                      </div>
-                    </div>
-
-                    {/* 直上pt差 */}
-                    <div className="flex justify-between lg:flex-col lg:items-end px-4 lg:px-0 py-1.5 lg:py-0 bg-slate-800/40 lg:bg-transparent rounded lg:rounded-none lg:pr-2 border border-slate-700/50 lg:border-none">
-                      <span className="lg:text-[10px] text-slate-400 font-bold uppercase tracking-wider">Diff</span>
-                      <span className="font-mono text-slate-300 text-sm sm:text-lg tabular-nums font-semibold">
-                        {index === 0 ? "-" : formatPoints(team.point_diff_from_above)}
-                      </span>
-                    </div>
-
-                    {/* 今節のpt */}
-                    <div className="flex justify-between lg:flex-col lg:items-end px-4 lg:px-0 py-1.5 lg:py-0 bg-slate-800/40 lg:bg-transparent rounded lg:rounded-none lg:pr-4 border border-slate-700/50 lg:border-none">
-                      <span className="lg:text-[10px] text-slate-400 font-bold uppercase tracking-wider">Today</span>
-                      <span className={`font-mono text-sm sm:text-lg font-bold tabular-nums ${isSessionPositive ? 'text-emerald-400' : team.session_points < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                        {previousSessionDate ? formatPointDiff(team.session_points) : "-"}
-                      </span>
-                    </div>
-
-                    {/* 残試合 */}
-                    <div className="flex justify-between lg:justify-center items-center px-4 lg:px-0 py-1.5 lg:py-0 bg-slate-800/40 lg:bg-transparent rounded lg:rounded-none border border-slate-700/50 lg:border-none">
-                      <span className="lg:hidden text-xs text-slate-400 font-bold uppercase tracking-wider">Remain</span>
-                      <span className="font-mono text-slate-400 text-sm sm:text-lg font-semibold">{team.remaining_games}</span>
-                    </div>
-
-                    {/* 順位分布 */}
-                    <div className="col-span-2 lg:col-span-1 flex justify-center items-center gap-2 sm:gap-3 px-2 mt-2 lg:mt-0 lg:pl-4">
-                      <div className="flex flex-col items-center">
-                        <span className="text-[10px] text-slate-500 font-bold hidden lg:block mb-0.5">1st</span>
-                        <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm sm:text-base font-bold text-yellow-400 border border-yellow-500/30 shadow-inner">{team.wins}</span>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-[10px] text-slate-500 font-bold hidden lg:block mb-0.5">2nd</span>
-                        <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm sm:text-base font-bold text-slate-300 border border-slate-500/40 shadow-inner">{team.seconds}</span>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-[10px] text-slate-500 font-bold hidden lg:block mb-0.5">3rd</span>
-                        <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm sm:text-base font-bold text-orange-400 border border-orange-500/30 shadow-inner">{team.thirds}</span>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-[10px] text-slate-500 font-bold hidden lg:block mb-0.5">4th</span>
-                        <span className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm sm:text-base font-bold text-slate-500 border border-slate-700 shadow-inner">{team.fourths}</span>
-                      </div>
+                  {/* 3. トータルポイント */}
+                  <div className="flex flex-col items-center lg:items-end justify-center z-10 lg:order-4 flex-shrink-0 w-[65px] sm:w-[90px] lg:w-auto px-0">
+                    <div className={`font-black text-[18px] sm:text-3xl lg:text-5xl tracking-tighter tabular-nums text-center lg:text-right w-full lg:pr-4 ${isPositive ? 'text-cyan-400 lg:drop-shadow-[0_0_12px_rgba(34,211,238,0.5)]' : team.total_points < 0 ? 'text-rose-500' : 'text-slate-300'}`}>
+                      {formatPoints(team.total_points)}
                     </div>
                   </div>
+
+                  {/* 4. ポイント差 */}
+                  <div className="flex flex-col items-center lg:items-end justify-center z-10 lg:order-5 flex-shrink-0 w-[45px] sm:w-[70px] lg:w-auto px-0 lg:pr-2">
+                    <span className="font-mono text-slate-300 text-[12px] sm:text-[17px] lg:text-lg tabular-nums font-semibold text-center lg:text-right w-full">
+                      {index === 0 ? "-" : formatPoints(team.point_diff_from_above)}
+                    </span>
+                  </div>
+
+                  {/* 5. 試合数 */}
+                  <div className="flex flex-col items-center justify-center z-10 lg:order-3 flex-shrink-0 w-[50px] sm:w-[60px] lg:w-auto px-0 text-slate-400">
+                    <span className="font-mono text-[10px] sm:text-[13px] font-bold whitespace-nowrap lg:hidden">
+                      {team.game_count}/{team.total_games}
+                    </span>
+                    <span className="font-mono text-xl font-bold whitespace-nowrap hidden lg:inline">
+                      {team.game_count}
+                    </span>
+                  </div>
+
+                  {/* ========================================================== */}
+                  {/* デスクトップ専用表示エリア (スマホ時は完全に非表示) */}
+                  {/* ========================================================== */}
+                  
+                  {/* 今節のpt */}
+                  <div className="hidden lg:flex flex-col lg:items-end justify-center lg:order-6 lg:pr-4">
+                    <span className={`font-mono text-xl font-bold tabular-nums ${isSessionPositive ? 'text-emerald-400' : team.session_points < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                      {previousSessionDate ? formatPointDiff(team.session_points) : "-"}
+                    </span>
+                  </div>
+
+                  {/* 残試合 */}
+                  <div className="hidden lg:flex justify-center items-center lg:order-7">
+                    <span className="font-mono text-slate-400 text-xl font-semibold">{team.remaining_games}</span>
+                  </div>
+
+                  {/* 順位分布 */}
+                  <div className="hidden lg:flex justify-center items-center gap-3 lg:order-8 pl-4">
+                    <div className="w-9 h-9 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm font-bold text-yellow-400 border border-yellow-500/30 shadow-inner">{team.wins}</div>
+                    <div className="w-9 h-9 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm font-bold text-slate-300 border border-slate-500/40 shadow-inner">{team.seconds}</div>
+                    <div className="w-9 h-9 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm font-bold text-orange-400 border border-orange-500/30 shadow-inner">{team.thirds}</div>
+                    <div className="w-9 h-9 flex items-center justify-center bg-slate-900 rounded-md font-mono text-sm font-bold text-slate-500 border border-slate-700 shadow-inner">{team.fourths}</div>
+                  </div>
+
                 </div>
               );
             })}
