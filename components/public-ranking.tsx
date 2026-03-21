@@ -135,21 +135,18 @@ export default function PublicRanking({
 
       <div className="max-w-[1200px] mx-auto relative z-10">
         {/* ヘッダー */}
-        <div className="mb-8 sm:mb-12 landscape:mb-4 text-center animate-in fade-in zoom-in-95 duration-1000 flex flex-col items-center gap-1 sm:gap-2">
+        <div className="mb-8 sm:mb-12 text-center animate-in fade-in zoom-in-95 duration-1000 flex flex-col items-center gap-1 sm:gap-2">
           {activeSeasonName && (
-            <div className="text-xl sm:text-2xl md:text-3xl landscape:text-lg font-bold text-cyan-400 whitespace-nowrap tracking-wide drop-shadow-none">
+            <div className="text-xl sm:text-2xl md:text-3xl font-bold text-cyan-400 whitespace-nowrap tracking-wide drop-shadow-none">
               [{activeSeasonName} {activeStage}]
             </div>
           )}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl landscape:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-cyan-200 tracking-wider mb-2 landscape:hidden drop-shadow-lg italic pr-2 whitespace-nowrap flex items-center justify-center">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-cyan-200 tracking-wider mb-2 drop-shadow-lg italic pr-2 whitespace-nowrap flex items-center justify-center">
             {title}
             <span className="text-cyan-400/80 mx-2 sm:mx-4 not-italic font-light">/</span>
             <span className="not-italic">{format(date, "yyyy.MM.dd", { locale: ja })}</span>
           </h1>
-          <h1 className="hidden landscape:flex text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-cyan-200 tracking-wider drop-shadow-lg italic pr-2 whitespace-nowrap items-center justify-center">
-            {title} <span className="text-cyan-400/80 mx-2 not-italic font-light">/</span> <span className="not-italic">{format(date, "yyyy.MM.dd", { locale: ja })}</span>
-          </h1>
-          <div className="w-32 h-1 mx-auto bg-gradient-to-r from-transparent via-cyan-500 to-transparent mt-2 md:mt-4 landscape:mt-1"></div>
+          <div className="w-32 h-1 mx-auto bg-gradient-to-r from-transparent via-cyan-500 to-transparent mt-2 md:mt-4"></div>
         </div>
 
         {/* ランキングテーブルエリア */}
@@ -164,9 +161,9 @@ export default function PublicRanking({
           )}
 
           {/* テーブル・パネルコンテナ */}
-          <div className="relative z-10 space-y-2 sm:space-y-4 landscape:space-y-1.5">
+          <div className="relative z-10 space-y-2 sm:space-y-4">
             {/* ヘッダー（スマホ/PC共通・レスポンシブ） */}
-            <div className="flex items-center lg:grid lg:grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-1 sm:gap-2 lg:gap-2 px-1 sm:px-4 lg:px-4 pb-1 sm:pb-2 text-[10px] sm:text-xs lg:text-sm font-bold text-slate-400 border-b border-slate-800/80 mb-2 sm:mb-4 landscape:mb-1 lg:tracking-wider">
+            <div className="flex items-center lg:grid lg:grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-1 sm:gap-2 lg:gap-2 px-1 sm:px-4 lg:px-4 pb-1 sm:pb-2 text-[10px] sm:text-xs lg:text-sm font-bold text-slate-400 border-b border-slate-800/80 mb-2 sm:mb-4 lg:tracking-wider">
               {/* RANK/TEAM（非表示のダミー幅でヘッダー位置を合わせる） */}
               <div className="w-10 sm:w-14 lg:w-auto opacity-0 pointer-events-none text-center lg:order-1">#</div>
               <div className="flex-1 lg:pl-6 opacity-0 pointer-events-none pl-1 sm:pl-2 lg:order-2">TEAM</div>
@@ -202,7 +199,7 @@ export default function PublicRanking({
               return (
                 <div
                   key={team.id}
-                  className={`group relative flex items-center lg:grid lg:grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-1 sm:gap-2 lg:gap-2 p-1.5 sm:p-3 lg:p-4 landscape:py-1 landscape:px-2 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-800/80 backdrop-blur-md border border-slate-700/50 shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-8 fill-mode-both ${isEliminated}`}
+                  className={`group relative flex items-center lg:grid lg:grid-cols-[80px_1fr_100px_180px_120px_120px_100px_180px] gap-1 sm:gap-2 lg:gap-2 p-1.5 sm:p-3 lg:p-4 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-800/80 backdrop-blur-md border border-slate-700/50 shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-8 fill-mode-both ${isEliminated}`}
                   style={{ animationDelay: `${index * 80}ms`, animationDuration: '800ms' }}
                 >
                   {/* アニメーション用背景ハイライト */}
@@ -215,7 +212,7 @@ export default function PublicRanking({
 
                   {/* 1. 順位ブロック */}
                   <div className="flex justify-center z-10 relative flex-shrink-0 w-10 sm:w-14 lg:w-auto lg:order-1">
-                    <div className={`w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 landscape:w-8 landscape:h-8 rounded-lg lg:rounded-xl flex items-center justify-center font-black text-xl sm:text-2xl lg:text-4xl landscape:text-xl shadow-inner transform -skew-x-6 sm:-skew-x-12 ${rankBg}`}>
+                    <div className={`w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-lg lg:rounded-xl flex items-center justify-center font-black text-xl sm:text-2xl lg:text-4xl shadow-inner transform -skew-x-6 sm:-skew-x-12 ${rankBg}`}>
                       {index + 1}
                     </div>
                   </div>
@@ -227,7 +224,7 @@ export default function PublicRanking({
 
                   {/* 3. トータルポイント */}
                   <div className="flex flex-col items-center lg:items-end justify-center z-10 lg:order-4 flex-shrink-0 w-[65px] sm:w-[90px] lg:w-auto px-0">
-                    <div className={`font-black text-[18px] sm:text-3xl lg:text-5xl landscape:text-xl tracking-tighter tabular-nums text-center lg:text-right w-full lg:pr-4 ${isPositive ? 'text-cyan-400 lg:drop-shadow-[0_0_12px_rgba(34,211,238,0.5)]' : team.total_points < 0 ? 'text-rose-500' : 'text-slate-300'}`}>
+                    <div className={`font-black text-[18px] sm:text-3xl lg:text-5xl tracking-tighter tabular-nums text-center lg:text-right w-full lg:pr-4 ${isPositive ? 'text-cyan-400 lg:drop-shadow-[0_0_12px_rgba(34,211,238,0.5)]' : team.total_points < 0 ? 'text-rose-500' : 'text-slate-300'}`}>
                       {formatPoints(team.total_points)}
                     </div>
                   </div>
