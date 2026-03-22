@@ -284,7 +284,7 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                       {(editingGameId === game.id && editData ? editData : game.player_game_results)
                         .sort((a, b) => a.rank - b.rank)
                         .map((result) => {
-                          const teamInfo = getTeamInfo(editingGameId === game.id ? result.team_id : result.players.team_id)
+                          const teamInfo = getTeamInfo(result.team_id)
                           const isEditing = editingGameId === game.id
 
                           return (
