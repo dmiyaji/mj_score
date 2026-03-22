@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { TableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
+import { TableHead, Table, TableBody, TableCell, TableHeader, TableRow, TableFooter } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -55,6 +55,17 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
 
   const saveEditing = async () => {
     if (!editingGameId || !editData) return
+
+    const totalScore = editData.reduce((sum, player) => sum + Number(player.score), 0)
+    if (totalScore !== 100000) {
+      toast({
+        title: "エラー",
+        description: "持ち点の合計が10万点になるように入力してください",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       // ポイント・順位の自動計算 (score-input-form.tsxのロジックと同じ)
       const playersWithRank = editData
@@ -340,8 +351,9 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                                 {isEditing ? (
                                   <Input
                                     type="number"
-                                    value={result.score}
-                                    onChange={(e) => updateEditData(result.id, "score", e.target.value)}
+                                    placeholder="点数(百)"
+                                    value={result.score / 100 || ""}
+                                    onChange={(e) => updateEditData(result.id, "score", (Number.parseInt(e.target.value) || 0) * 100)}
                                     className="h-8 text-right w-full min-w-[80px] text-xs"
                                   />
                                 ) : (
@@ -379,6 +391,19 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                           )
                         })}
                     </TableBody>
+                    {editingGameId === game.id && editData && (
+                      <TableFooter className="bg-slate-50 border-t">
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-right font-medium text-xs p-2">
+                            合計
+                          </TableCell>
+                          <TableCell className={`text-right font-bold text-xs p-2 ${editData.reduce((sum, p) => sum + Number(p.score), 0) === 100000 ? "text-emerald-600" : "text-rose-500"}`}>
+                            {(editData.reduce((sum, p) => sum + Number(p.score), 0) / 100).toLocaleString()}
+                          </TableCell>
+                          <TableCell colSpan={2} />
+                        </TableRow>
+                      </TableFooter>
+                    )}
                   </Table>
                 </div>
               </div>
