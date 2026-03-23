@@ -270,9 +270,10 @@ export const gameResultOperations = {
     // プレイヤー個別結果を作成するステートメント
     for (const result of playerResults) {
       const penalty = result.penaltyPoints || 0
+      const pgrId = crypto.randomUUID()
       statements.push(
-        db.prepare('INSERT INTO player_game_results (game_result_id, player_id, team_id, score, points, penalty_points, rank, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-          .bind(gameId, result.playerId, result.teamId, result.score, result.points, penalty, result.rank, isoDatetime)
+        db.prepare('INSERT INTO player_game_results (id, game_result_id, player_id, team_id, score, points, penalty_points, rank, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .bind(pgrId, gameId, result.playerId, result.teamId, result.score, result.points, penalty, result.rank, isoDatetime)
       )
     }
 
@@ -893,5 +894,71 @@ export const importOperations = {
     }
 
     return data
+  },
+
+  // データベースの完全復元（全削除して再投入）
+  async restoreFullDatabase(db: D1Database, data: {
+    teams: any[],
+    players: any[],
+    gameResults: any[],
+    seasons: any[]
+  }) {
+    const batch = [];
+
+    // 削除処理（外部キー制約のあるものから順に）
+    batch.push(db.prepare('DELETE FROM player_game_results'));
+    batch.push(db.prepare('DELETE FROM game_results'));
+    batch.push(db.prepare('DELETE FROM players'));
+    batch.push(db.prepare('DELETE FROM teams'));
+    batch.push(db.prepare('DELETE FROM seasons'));
+
+    // seasons
+    if (data.seasons) {
+      for (const item of data.seasons) {
+        batch.push(db.prepare(
+          'INSERT INTO seasons (id, name, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+        ).bind(item.id, item.name, item.is_active ? 1 : 0, item.created_at, item.updated_at));
+      }
+    }
+
+    // teams
+    if (data.teams) {
+      for (const item of data.teams) {
+        batch.push(db.prepare(
+          'INSERT INTO teams (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+        ).bind(item.id, item.name, item.color, item.created_at, item.updated_at));
+      }
+    }
+
+    // players
+    if (data.players) {
+      for (const item of data.players) {
+        batch.push(db.prepare(
+          'INSERT INTO players (id, name, team_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+        ).bind(item.id, item.name, item.team_id, item.created_at, item.updated_at));
+      }
+    }
+
+    // game_results & player_game_results
+    if (data.gameResults) {
+      for (const item of data.gameResults) {
+        batch.push(db.prepare(
+          'INSERT INTO game_results (id, game_date, season_id, stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind(item.id, item.game_date, item.season_id, item.stage, item.created_at, item.updated_at));
+
+        if (item.player_game_results) {
+          for (const pgr of item.player_game_results) {
+            const pgrId = pgr.id || crypto.randomUUID()
+            batch.push(db.prepare(
+              'INSERT INTO player_game_results (id, game_result_id, player_id, team_id, score, points, penalty_points, rank, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ).bind(pgrId, pgr.game_result_id, pgr.player_id, pgr.team_id, pgr.score, pgr.points, pgr.penalty_points, pgr.rank, pgr.created_at));
+          }
+        }
+      }
+    }
+
+    // バッチ実行
+    await db.batch(batch);
+    return { success: true, count: batch.length };
   },
 }

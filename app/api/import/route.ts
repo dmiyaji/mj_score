@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const { type, data, csvText } = await request.json() as any
 
-    if (!type || !['teams', 'players', 'gameResults'].includes(type)) {
+    if (!type || !['teams', 'players', 'gameResults', 'restore'].includes(type)) {
       return NextResponse.json(
         { error: 'Invalid import type' },
         { status: 400 }
@@ -33,6 +33,13 @@ export async function POST(request: NextRequest) {
     let result
     const db = await getDb()
     switch (type) {
+      case 'restore':
+        result = await importOperations.restoreFullDatabase(db, importData)
+        return NextResponse.json({
+          success: true,
+          message: 'Database restored successfully',
+          count: result.count
+        })
       case 'teams':
         result = await importOperations.importTeams(db, importData)
         break

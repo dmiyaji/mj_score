@@ -8,9 +8,20 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Database, Download, Upload, FileText, AlertTriangle } from "lucide-react"
+import { Database, Download, Upload, FileText, AlertTriangle, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { exportApi, importApi } from "@/lib/api-client"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface DataManagementProps {
   onDataUpdate: () => void
@@ -20,9 +31,10 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
   const [exportFormat, setExportFormat] = useState<"json" | "csv">("json")
   const [exportTable, setExportTable] = useState<"teams" | "players" | "gameResults">("teams")
   const [importFile, setImportFile] = useState<File | null>(null)
-  const [importType, setImportType] = useState<"teams" | "players" | "gameResults">("teams")
+  const [importType, setImportType] = useState<"teams" | "players" | "gameResults" | "restore">("teams")
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false)
   const { toast } = useToast()
 
   // データエクスポート
@@ -83,7 +95,13 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
     try {
       const fileContent = await importFile.text()
 
-      if (importFile.name.endsWith(".json")) {
+      if (importType === "restore") {
+        if (!importFile.name.endsWith(".json")) {
+          throw new Error("完全復元にはエクスポートされたJSONファイルを使用してください")
+        }
+        const data = JSON.parse(fileContent)
+        await importApi.restoreDatabase(data)
+      } else if (importFile.name.endsWith(".json")) {
         const data = JSON.parse(fileContent)
 
         if (importType === "teams" && data.teams) {
@@ -245,6 +263,9 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="restore" className="text-sm font-bold text-red-600">
+                      完全復元 (JSONのみ)
+                    </SelectItem>
                     <SelectItem value="teams" className="text-sm">
                       チーム
                     </SelectItem>
@@ -276,14 +297,61 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                 )}
               </div>
 
-              <Button
-                onClick={handleImport}
-                disabled={!importFile || isImporting}
-                className="w-full text-sm bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {isImporting ? "インポート中..." : "インポート"}
-              </Button>
+              {importType === "restore" && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-red-800">
+                      <p className="font-bold mb-1">【重要】完全復元の確認</p>
+                      <p>
+                        この操作を実行すると、現在のデータベース内の**すべてのデータ（設定、プレイヤー、成績）が削除され**、
+                        選択したバックグラウンドファイルの内容で完全に置き換えられます。
+                      </p>
+                      <p className="mt-1 font-semibold">この操作は取り消せません。</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {importType === "restore" ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      disabled={!importFile || isImporting}
+                      className="w-full text-sm bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 transition-all duration-200"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {isImporting ? "復元中..." : "データベースを完全復元する"}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-white">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>データベースの完全復元</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        本当にデータベースを完全に復元しますか？既存のすべてのデータが削除され、選択したファイルの内容で上書きされます。この操作は取り消せません。
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleImport}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        実行する
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <Button
+                  onClick={handleImport}
+                  disabled={!importFile || isImporting}
+                  className="w-full text-sm bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {isImporting ? "インポート中..." : "インポート"}
+                </Button>
+              )}
             </div>
           </TabsContent>
         </Tabs>

@@ -17,7 +17,7 @@ async function apiRequest<T>(
   const response = await fetch(url, config)
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+    const errorData = (await response.json().catch(() => ({ error: 'Unknown error' }))) as { error?: string }
     throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
   }
 
@@ -241,6 +241,13 @@ export const importApi = {
     return apiRequest('/import', {
       method: 'POST',
       body: JSON.stringify({ type: tableName, csvText }),
+    })
+  },
+
+  async restoreDatabase(data: any) {
+    return apiRequest('/import', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'restore', data }),
     })
   },
 }
