@@ -683,6 +683,9 @@ export const exportOperations = {
             game.player_game_results.map((result: any) => ({
               game_id: game.id,
               game_date: game.game_date,
+              season_id: game.season_id || "",
+              stage: game.stage || "",
+              pgr_id: result.id,
               player_id: result.player_id,
               team_id: result.team_id,
               player_name: result.players?.name || "",
@@ -693,7 +696,7 @@ export const exportOperations = {
               created_at: result.created_at,
             })),
           )
-          headers = ["game_id", "game_date", "player_id", "team_id", "player_name", "score", "points", "penalty_points", "rank", "created_at"]
+          headers = ["game_id", "game_date", "season_id", "stage", "pgr_id", "player_id", "team_id", "player_name", "score", "points", "penalty_points", "rank", "created_at"]
           break
       }
 
@@ -835,7 +838,7 @@ export const importOperations = {
   },
 
   // CSVからデータを解析
-  parseCSV(csvText: string, tableName: "teams" | "players" | "gameResults") {
+  parseCSV(csvText: string, tableName: "teams" | "players" | "gameResults" | "seasons") {
     const lines = csvText.trim().split("\n")
     if (lines.length < 2) {
       throw new Error("CSVファイルにデータが含まれていません")
@@ -859,34 +862,57 @@ export const importOperations = {
     switch (tableName) {
       case "teams":
         return data.map((row) => ({
+          id: row.id,
           name: row.name,
           color: row.color || "bg-gray-100 text-gray-800",
+          created_at: row.created_at,
+          updated_at: row.updated_at,
         }))
       case "players":
         return data.map((row) => ({
+          id: row.id,
           name: row.name,
-          team_name: row.team_name, // オプショナルに変更（undefinedでも可）
+          team_id: row.team_id,
+          team_name: row.team_name, // 後方互換性のため
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+        }))
+      case "seasons":
+        return data.map((row) => ({
+          id: row.id,
+          name: row.name,
+          is_active: row.is_active === "1" || row.is_active === "true" || row.is_active === 1,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
         }))
       case "gameResults":
-        // ゲーム結果の場合は特別な処理が必要
+        // ゲーム結果の場合は特別な処理が必要（1つのゲームに4つのプレイヤー行があるため）
         const gameMap = new Map()
 
         data.forEach((row) => {
-          const gameId = row.game_id || row.game_date
+          // エクスポート時に game_id または id というヘッダーになっている想定
+          const gameId = row.game_id || row.id || row.game_date
           if (!gameMap.has(gameId)) {
             gameMap.set(gameId, {
+              id: row.game_id || row.id,
               game_date: row.game_date,
-              players: [],
+              season_id: row.season_id,
+              stage: row.stage,
+              player_game_results: [],
             })
           }
 
-          gameMap.get(gameId).players.push({
+          gameMap.get(gameId).player_game_results.push({
+            id: row.pgr_id,
+            game_result_id: row.game_id,
+            player_id: row.player_id,
             player_name: row.player_name,
             team_id: row.team_id,
             score: Number.parseInt(row.score) || 0,
             points: Number.parseFloat(row.points) || 0,
             penalty_points: Number.parseFloat(row.penalty_points) || 0,
             rank: Number.parseInt(row.rank) || 1,
+            created_at: row.created_at,
           })
         })
 
@@ -960,5 +986,69 @@ export const importOperations = {
     // バッチ実行
     await db.batch(batch);
     return { success: true, count: batch.length };
+  },
+
+  // テーブル個別の追加・更新（Upsert）
+  async upsertTable(db: D1Database, tableName: string, data: any[]) {
+    const batch = [];
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    for (const item of data) {
+      if (tableName === 'teams') {
+        const id = item.id || crypto.randomUUID();
+        batch.push(db.prepare(`
+          INSERT INTO teams (id, name, color, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            color = excluded.color,
+            updated_at = excluded.updated_at
+        `).bind(id, item.name, item.color, item.created_at || now, item.updated_at || now));
+      } else if (tableName === 'players') {
+        const id = item.id || crypto.randomUUID();
+        batch.push(db.prepare(`
+          INSERT INTO players (id, name, team_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            team_id = excluded.team_id,
+            updated_at = excluded.updated_at
+        `).bind(id, item.name, item.team_id, item.created_at || now, item.updated_at || now));
+      } else if (tableName === 'seasons') {
+        const id = item.id || crypto.randomUUID();
+        batch.push(db.prepare(`
+          INSERT INTO seasons (id, name, is_active, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            is_active = excluded.is_active,
+            updated_at = excluded.updated_at
+        `).bind(id, item.name, item.is_active ? 1 : 0, item.created_at || now, item.updated_at || now));
+      } else if (tableName === 'gameResults') {
+        // ゲーム結果の個別のUpsert（簡易版：IDが一致すれば既存を削除して再登録）
+        if (item.id) {
+          batch.push(db.prepare('DELETE FROM player_game_results WHERE game_result_id = ?').bind(item.id));
+          batch.push(db.prepare('DELETE FROM game_results WHERE id = ?').bind(item.id));
+          
+          batch.push(db.prepare(
+            'INSERT INTO game_results (id, game_date, season_id, stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+          ).bind(item.id, item.game_date, item.season_id, item.stage, item.created_at || now, item.updated_at || now));
+
+          if (item.player_game_results) {
+            for (const pgr of item.player_game_results) {
+              const pgrId = pgr.id || crypto.randomUUID()
+              batch.push(db.prepare(
+                'INSERT INTO player_game_results (id, game_result_id, player_id, team_id, score, points, penalty_points, rank, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              ).bind(pgrId, item.id, pgr.player_id, pgr.team_id, pgr.score, pgr.points, pgr.penalty_points, pgr.rank, pgr.created_at || now));
+            }
+          }
+        }
+      }
+    }
+
+    if (batch.length > 0) {
+      await db.batch(batch);
+    }
+    return { success: true, count: data.length };
   },
 }

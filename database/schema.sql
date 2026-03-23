@@ -50,8 +50,8 @@ CREATE TABLE player_game_results (
     penalty_points DECIMAL(10,2) DEFAULT 0,
     `rank` INT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (game_result_id) REFERENCES game_results(id) ON DELETE CASCADE,
-    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+    FOREIGN KEY (game_result_id) REFERENCES game_results(id),
+    FOREIGN KEY (player_id) REFERENCES players(id),
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL
 );
 

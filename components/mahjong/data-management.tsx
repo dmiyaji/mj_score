@@ -31,7 +31,7 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
   const [exportFormat, setExportFormat] = useState<"json" | "csv">("json")
   const [exportTable, setExportTable] = useState<"teams" | "players" | "gameResults">("teams")
   const [importFile, setImportFile] = useState<File | null>(null)
-  const [importType, setImportType] = useState<"teams" | "players" | "gameResults" | "restore">("teams")
+  const [importType, setImportType] = useState<"teams" | "players" | "gameResults" | "seasons" | "restore">("teams")
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false)
@@ -246,8 +246,8 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                     <p className="font-medium mb-1">注意事項</p>
                     <ul className="space-y-1 text-xs">
                       <li>• インポート前に必ずデータをバックアップしてください</li>
-                      <li>• 同じ名前のデータが存在する場合はエラーになります</li>
-                      <li>• CSVファイルは適切な形式である必要があります</li>
+                      <li>• 同一IDや同名のデータがある場合は**最新の情報に上書き**されます</li>
+                      <li>• セレクターで「完全復元」を選ぶとDBが一度空になります</li>
                     </ul>
                   </div>
                 </div>
@@ -265,6 +265,9 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                   <SelectContent>
                     <SelectItem value="restore" className="text-sm font-bold text-red-600">
                       完全復元 (JSONのみ)
+                    </SelectItem>
+                    <SelectItem value="seasons" className="text-sm">
+                      大会シーズン
                     </SelectItem>
                     <SelectItem value="teams" className="text-sm">
                       チーム
@@ -349,7 +352,7 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                   className="w-full text-sm bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
                 >
                   <Upload className="w-4 h-4 mr-2" />
-                  {isImporting ? "インポート中..." : "インポート"}
+                  {isImporting ? "インポート中..." : "追加・上書きインポート"}
                 </Button>
               )}
             </div>

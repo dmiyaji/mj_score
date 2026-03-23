@@ -237,7 +237,7 @@ export const importApi = {
     })
   },
 
-  async parseCSVAndImport(csvText: string, tableName: 'teams' | 'players' | 'gameResults') {
+  async parseCSVAndImport(csvText: string, tableName: 'teams' | 'players' | 'gameResults' | 'seasons') {
     return apiRequest('/import', {
       method: 'POST',
       body: JSON.stringify({ type: tableName, csvText }),
@@ -248,6 +248,13 @@ export const importApi = {
     return apiRequest('/import', {
       method: 'POST',
       body: JSON.stringify({ type: 'restore', data }),
+    })
+  },
+
+  async importSeasons(seasons: any[]) {
+    return apiRequest('/import', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'seasons', data: seasons }),
     })
   },
 }

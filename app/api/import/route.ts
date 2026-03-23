@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const { type, data, csvText } = await request.json() as any
 
-    if (!type || !['teams', 'players', 'gameResults', 'restore'].includes(type)) {
+    if (!type || !['teams', 'players', 'gameResults', 'restore', 'seasons'].includes(type)) {
       return NextResponse.json(
         { error: 'Invalid import type' },
         { status: 400 }
@@ -41,13 +41,10 @@ export async function POST(request: NextRequest) {
           count: result.count
         })
       case 'teams':
-        result = await importOperations.importTeams(db, importData)
-        break
       case 'players':
-        result = await importOperations.importPlayers(db, importData)
-        break
       case 'gameResults':
-        result = await importOperations.importGameResults(db, importData)
+      case 'seasons':
+        result = await importOperations.upsertTable(db, type, importData)
         break
       default:
         return NextResponse.json(
@@ -58,7 +55,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      imported: result.length,
+      message: 'Data imported/updated successfully',
+      count: result.count,
       data: result
     })
   } catch (error) {
