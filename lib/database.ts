@@ -642,16 +642,18 @@ export const exportOperations = {
   // 全データをエクスポート
   async exportAllData(db: D1Database) {
     try {
-      const [teams, players, gameResults] = await Promise.all([
+      const [teams, players, gameResults, seasons] = await Promise.all([
         teamOperations.getAll(db),
         playerOperations.getAll(db),
         gameResultOperations.getAll(db),
+        seasonOperations.getAll(db),
       ])
 
       return {
         teams,
         players,
         gameResults,
+        seasons,
         exportDate: new Date().toISOString(),
       }
     } catch (error) {
