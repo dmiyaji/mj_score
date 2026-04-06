@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Settings2 } from "lucide-react"
+import { Plus, Settings2, Calculator } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { gameResultApi } from "@/lib/api-client"
 import type { Team, Player, Season } from "@/lib/supabase"
@@ -64,6 +64,26 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
     const newPlayers = [...players]
     newPlayers[index].penaltyPoints = penalty
     setPlayers(newPlayers)
+  }
+
+  const emptyCount = players.filter(p => p.score === 0 && p.name !== "").length
+  const filledCount = players.filter(p => p.score !== 0 && p.name !== "").length
+  const canAutoComplete = emptyCount === 1 && filledCount === 3
+
+  // 点数自動補完
+  const autoCompleteScore = () => {
+    const targetIndex = players.findIndex(p => p.score === 0 && p.name !== "")
+    if (targetIndex !== -1) {
+      const sum = players.reduce((s, p, i) => i !== targetIndex ? s + p.score : s, 0)
+      const remaining = 100000 - sum
+      const newPlayers = [...players]
+      newPlayers[targetIndex].score = remaining
+      setPlayers(newPlayers)
+      toast({
+        title: "自動計算完了",
+        description: `残り点数（${remaining / 100}）を入力しました`,
+      })
+    }
   }
 
   // ポイント計算
@@ -300,7 +320,7 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
         {/* 選択されたプレイヤーと持ち点入力エリア */}
         <div ref={pointsInputRef} className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Label className="text-sm font-medium text-slate-700">持ち点を入力</Label>
               <Button
                 variant="ghost"
@@ -311,6 +331,17 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
                 <Settings2 className="w-3 h-3 mr-1" />
                 ペナルティ
               </Button>
+              {canAutoComplete && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={autoCompleteScore}
+                  className="text-[10px] sm:text-xs h-6 sm:h-7 px-2 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-medium transition-all"
+                >
+                  <Calculator className="w-3 h-3 mr-1" />
+                  残りを自動計算
+                </Button>
+              )}
             </div>
             <div className="text-[10px] sm:text-xs text-muted-foreground">
               {players.filter((p) => p.name !== "").length === 4 ? (
