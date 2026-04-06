@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import type React from "react"
+import React from "react"
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -8,8 +8,9 @@ import { TableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Users, TrendingUp, TrendingDown, Crown, Medal, Star, Map as MapIcon } from "lucide-react"
-import type { TeamStats, Season } from "@/lib/supabase"
+import { Users, TrendingUp, TrendingDown, Crown, Medal, Star, Map as MapIcon, ChevronDown, ChevronUp } from "lucide-react"
+import type { TeamStats, Season, PlayerStats } from "@/lib/supabase"
+import { statsApi } from "@/lib/api-client"
 
 interface TeamRankingProps {
   teamStats: TeamStats[]
@@ -19,6 +20,8 @@ interface TeamRankingProps {
 
 export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: TeamRankingProps) {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
+  const [allPlayerStats, setAllPlayerStats] = useState<PlayerStats[]>([])
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
 
   // Initialize with active season
   const activeSeason = seasons.find(s => s.is_active)
@@ -30,6 +33,9 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
     const sId = seasonId === "all" ? undefined : seasonId
     const stg = seasonId === "all" ? undefined : stage
     onLoadStats(undefined, undefined, undefined, sId, stg)
+    
+    // プレイヤーランキングも同時取得してセット
+    statsApi.getPlayerStats(undefined, undefined, undefined, sId, stg).then(stats => setAllPlayerStats(stats)).catch(err => console.error(err))
   }, [seasonId, stage, onLoadStats])
 
   // ソート機能
@@ -220,10 +226,15 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {getTeamRankingData().map((team) => (
+                  {getTeamRankingData().map((team) => {
+                    const isExpanded = expandedTeamId === team.id;
+                    const teamPlayersInfo = allPlayerStats.filter(p => p.team_id === team.id).sort((a, b) => b.total_points - a.total_points);
+
+                    return (
+                    <React.Fragment key={team.id}>
                     <TableRow
-                      key={team.id}
-                      className={`hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 ${team.is_eliminated ? 'bg-gray-50 text-gray-500 opacity-70 grayscale' : ''}`}
+                      onClick={() => setExpandedTeamId(isExpanded ? null : team.id)}
+                      className={`cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 ${team.is_eliminated ? 'bg-gray-50 text-gray-500 opacity-70 grayscale' : ''}`}
                     >
                       <TableCell className="font-medium text-xs p-2">
                         <div className="flex items-center gap-1">
@@ -232,9 +243,12 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
                       </TableCell>
                       <TableCell className="text-xs p-2">
                         <div className="flex flex-col items-start gap-1">
-                          <Badge className={`px-3 py-1 rounded-full text-xs border ${team.color}`}>
-                            {truncateName(team.name, 8)}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge className={`px-3 py-1 rounded-full text-xs border ${team.color}`}>
+                              {truncateName(team.name, 8)}
+                            </Badge>
+                            {isExpanded ? <ChevronUp className="w-3 h-3 text-slate-400 flex-shrink-0" /> : <ChevronDown className="w-3 h-3 text-slate-400 flex-shrink-0" />}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell
@@ -250,7 +264,63 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
                       <TableCell className="hidden sm:table-cell text-right text-xs p-2">{team.thirds}</TableCell>
                       <TableCell className="hidden sm:table-cell text-right text-xs p-2">{team.fourths}</TableCell>
                     </TableRow>
-                  ))}
+                    
+                    {/* アコーディオン部分 */}
+                    {isExpanded && (
+                      <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                        <TableCell colSpan={9} className="p-0 border-b border-t-0">
+                          <div className="p-4 sm:p-5 animate-in slide-in-from-top-2 fade-in duration-200">
+                            <div className="flex items-center gap-2 mb-3 ml-1 text-slate-700">
+                              <Users className="w-4 h-4 text-purple-500" />
+                              <span className="text-sm font-bold">個人成績</span>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+                              <Table>
+                                <TableHeader className="bg-slate-50">
+                                  <TableRow>
+                                    <TableHead className="w-16 sm:w-24 text-xs p-2 font-semibold text-slate-600">プレイヤー</TableHead>
+                                    <TableHead className="w-12 sm:w-16 text-xs p-2 font-semibold text-slate-600 text-right">累計</TableHead>
+                                    <TableHead className="w-8 sm:w-12 text-xs p-2 font-semibold text-slate-600 text-right">G数</TableHead>
+                                    <TableHead className="w-12 sm:w-16 text-xs p-2 font-semibold text-slate-600 text-right">平着</TableHead>
+                                    <TableHead className="hidden sm:table-cell w-6 sm:w-8 text-xs p-2 font-semibold text-slate-600 text-right">1着</TableHead>
+                                    <TableHead className="hidden sm:table-cell w-6 sm:w-8 text-xs p-2 font-semibold text-slate-600 text-right">2着</TableHead>
+                                    <TableHead className="hidden sm:table-cell w-6 sm:w-8 text-xs p-2 font-semibold text-slate-600 text-right">3着</TableHead>
+                                    <TableHead className="hidden sm:table-cell w-6 sm:w-8 text-xs p-2 font-semibold text-slate-600 text-right">4着</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {teamPlayersInfo.map(player => (
+                                    <TableRow key={player.id} className="hover:bg-slate-50">
+                                      <TableCell className="font-medium text-xs p-2 text-slate-800">
+                                        {truncateName(player.name, 10)}
+                                      </TableCell>
+                                      <TableCell className={`text-right font-bold text-xs p-2 ${player.total_points > 0 ? "text-green-600" : player.total_points < 0 ? "text-red-600" : ""}`}>
+                                        {formatPoints(player.total_points)}
+                                      </TableCell>
+                                      <TableCell className="text-right text-xs p-2 text-slate-600">{player.game_count}</TableCell>
+                                      <TableCell className="text-right text-xs p-2 text-slate-600">{formatAverageRank(player.average_rank)}</TableCell>
+                                      <TableCell className="hidden sm:table-cell text-right text-xs p-2 font-medium text-slate-600">{player.wins}</TableCell>
+                                      <TableCell className="hidden sm:table-cell text-right text-xs p-2 text-slate-600">{player.seconds}</TableCell>
+                                      <TableCell className="hidden sm:table-cell text-right text-xs p-2 text-slate-600">{player.thirds}</TableCell>
+                                      <TableCell className="hidden sm:table-cell text-right text-xs p-2 text-slate-600">{player.fourths}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                  {teamPlayersInfo.length === 0 && (
+                                    <TableRow>
+                                      <TableCell colSpan={8} className="text-center text-xs p-4 text-slate-400 bg-white">
+                                        所属プレイヤーがいません
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </React.Fragment>
+                  )})}
                 </TableBody>
               </Table>
             </div>

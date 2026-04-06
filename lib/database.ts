@@ -349,6 +349,35 @@ export const gameResultOperations = {
 export const statsOperations = {
   // プレイヤー統計取得（期間フィルター対応）
   async getPlayerStats(db: D1Database, teamFilter?: string, dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: 'REGULAR' | 'FINAL'): Promise<PlayerStats[]> {
+    // まず全プレイヤーを取得してマップを初期化（試合数0のプレイヤーも表示するため）
+    const allPlayersQuery = teamFilter && teamFilter !== "all" 
+      ? db.prepare(`SELECT p.id, p.name, p.team_id, COALESCE(t.name, '未所属') as team_name, COALESCE(t.color, 'bg-gray-100 text-gray-800') as team_color FROM players p LEFT JOIN teams t ON p.team_id = t.id WHERE p.team_id = ?`).bind(teamFilter)
+      : db.prepare(`SELECT p.id, p.name, p.team_id, COALESCE(t.name, '未所属') as team_name, COALESCE(t.color, 'bg-gray-100 text-gray-800') as team_color FROM players p LEFT JOIN teams t ON p.team_id = t.id`);
+    
+    const { results: allPlayers } = await allPlayersQuery.all();
+    
+    const playerStatsMap = new Map<string, PlayerStats & { regular_total: number; final_total: number }>();
+    
+    (allPlayers as any[]).forEach(p => {
+      playerStatsMap.set(p.id, {
+        id: p.id,
+        name: p.name,
+        team_id: p.team_id,
+        team_name: p.team_name,
+        team_color: p.team_color,
+        total_points: 0,
+        regular_total: 0,
+        final_total: 0,
+        game_count: 0,
+        average_points: 0,
+        average_rank: 0,
+        wins: 0,
+        seconds: 0,
+        thirds: 0,
+        fourths: 0,
+      });
+    });
+
     let whereConditions = []
     let queryParams: any[] = []
 
@@ -396,8 +425,6 @@ export const statsOperations = {
     `).bind(...queryParams).all()
 
     // データを集計
-    const playerStatsMap = new Map<string, PlayerStats & { regular_total: number; final_total: number }>()
-
       ; (results as any[]).forEach((result: any) => {
         const playerId = result.id
 
@@ -476,10 +503,7 @@ export const statsOperations = {
       }
     })
 
-    // FINALの時は、ファイナルに参加したプレイヤーのみにフィルター
-    const filteredStats = stage === 'FINAL' ? playerStats.filter(s => s.game_count > 0) : playerStats;
-
-    return filteredStats.sort((a, b) => b.total_points - a.total_points)
+    return playerStats.sort((a, b) => b.total_points - a.total_points)
   },
 
   // チーム統計取得（期間フィルター対応）
