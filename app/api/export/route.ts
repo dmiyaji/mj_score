@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exportOperations } from '@/lib/database'
-import { getRequestContext } from '@cloudflare/next-on-pages'
 import { getDb } from '@/lib/get-db'
 
-export const runtime = 'edge'
 
 // GET /api/export?type=all&format=json - Export all data
 // GET /api/export?type=teams&format=csv - Export teams as CSV

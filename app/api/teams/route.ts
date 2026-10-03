@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { teamOperations } from '@/lib/database'
-import { getRequestContext } from '@cloudflare/next-on-pages'
 import { getDb } from '@/lib/get-db'
 
-export const runtime = 'edge'
 
 // GET /api/teams - Get all teams
 export async function GET() {
@@ -11,19 +9,10 @@ export async function GET() {
     const db = await getDb()
     const teams = await teamOperations.getAll(db)
     return NextResponse.json(teams)
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching teams:', error)
-
-    let dbgEnv = 'unknown';
-    try {
-      const ctx = getRequestContext();
-      dbgEnv = ctx && ctx.env ? Object.keys(ctx.env).join(', ') : 'no env';
-    } catch (e: any) {
-      dbgEnv = 'ctx error: ' + String(e.message);
-    }
-
     return NextResponse.json(
-      { error: 'Failed to fetch teams', details: String(error?.message || error), envKeys: dbgEnv },
+      { error: 'Failed to fetch teams' },
       { status: 500 }
     )
   }

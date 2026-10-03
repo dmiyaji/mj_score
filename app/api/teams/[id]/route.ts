@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { teamOperations } from '@/lib/database'
-import { getRequestContext } from '@cloudflare/next-on-pages'
 import { getDb } from '@/lib/get-db'
 
-export const runtime = 'edge'
 
 // PUT /api/teams/[id] - Update a team
 export async function PUT(

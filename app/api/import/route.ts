@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { importOperations } from '@/lib/database'
-import { getRequestContext } from '@cloudflare/next-on-pages'
 import { getDb } from '@/lib/get-db'
 
-export const runtime = 'edge'
 
 // POST /api/import - Import data
 export async function POST(request: NextRequest) {

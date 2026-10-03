@@ -1,62 +1,65 @@
-# Mahjong score tool
+# mj_score（ナインリーグ成績入力）
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+麻雀リーグの成績管理アプリ。Next.js (App Router) + OpenNext で Cloudflare Workers / D1 上に構築している。
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/tlrs180-1171s-projects/v0-mahjong-score-tool)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/Ak9cvKjw9fN)
+## 前提
 
-## Overview
+- Node.js 22 / npm 10（npm 11 で lockfile を更新すると CI の `npm ci` が失敗することがある。`npx npm@10 install ...` を使う）
+- 本番 D1 を扱うコマンド（`db:pull`）のみ Cloudflare へのログインが必要: `npx wrangler login`
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
-
-## Deployment
-
-Your project is live at:
-
-**[https://vercel.com/tlrs180-1171s-projects/v0-mahjong-score-tool](https://vercel.com/tlrs180-1171s-projects/v0-mahjong-score-tool)**
-
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.dev/chat/projects/Ak9cvKjw9fN](https://v0.dev/chat/projects/Ak9cvKjw9fN)**
-
-## How It Works
-
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
-
-## ローカル環境の構築・起動手順
-
-このプロジェクトでは、バックエンドデータベースとしてCloudflare D1を使用しています。ローカル環境ではD1エミュレータを利用して開発を行います。
-
-### 1. 依存パッケージのインストール
-
-最初に必要なモジュールをインストールします。
+## セットアップ
 
 ```bash
 npm install
+npm run db:reset:local   # ローカル D1 を作り直す（マイグレーション適用 + 開発用シード投入）
 ```
 
-### 2. ローカルデータベースのセットアップ (初回のみ)
+## 動作確認
 
-スキーマ定義 (`schema.sql`) を用いて、ローカルのD1データベースにテーブルを作成します。
-
-```bash
-npx wrangler d1 execute mj-score-db --local --file=./schema.sql
-```
-
-### 3. 開発サーバーの起動
-
-以下のコマンドを実行すると、Next.jsの開発サーバーとローカルD1エミュレータ（プロキシサーバー）が同時に起動します。
+### 1. 開発サーバー（日常の開発）
 
 ```bash
 npm run dev
 ```
 
-起動後、ブラウザで以下のURLにアクセスして動作を確認できます。
-- アプリケーション: [http://localhost:3000](http://localhost:3000)
-- D1プロキシサーバー: `http://localhost:8788`
+http://localhost:3000 で確認する。D1 はローカル（`.wrangler/state/`）を使う。
+
+### 2. 本番同等ランタイム（リリース前に必須）
+
+```bash
+npm run preview
+```
+
+OpenNext でビルドし、Cloudflare Workers と同じ workerd ランタイムで起動する（http://localhost:8787）。
+
+### 3. 本番データでの確認（スキーマ変更・集計ロジック変更時）
+
+```bash
+npm run db:pull          # 本番 D1 を .local/prod-dump.sql にエクスポート
+npm run db:load:local    # ローカル D1 を作り直してダンプを投入 → 未適用マイグレーションを適用
+```
+
+`.local/` には個人データが含まれるため、確認後は削除し、絶対にコミットしないこと。
+
+## ローカル D1 の操作
+
+| コマンド                   | 内容                                                        |
+| -------------------------- | ----------------------------------------------------------- |
+| `npm run db:migrate:local` | 未適用のマイグレーションを適用                              |
+| `npm run db:seed:local`    | 開発用シード（`seeds/dev_seed.sql`）を投入                  |
+| `npm run db:reset:local`   | ローカル D1 を削除して作り直す（マイグレーション + シード） |
+
+SQL を直接実行する場合:
+
+```bash
+npx wrangler d1 execute mj-score-db --local --command "SELECT * FROM players"
+```
+
+## スキーマ変更
+
+`migrations/` に連番の SQL ファイル（例: `0002_add_xxx.sql`）を追加する。既存のマイグレーションファイルは変更しない。
+本番へはリリース時に自動で適用される。
+
+## Cloudflare の型定義
+
+`wrangler.jsonc` や `.dev.vars.example` を変更したら `npm run types:cf` で `cloudflare-env.d.ts` を再生成する。

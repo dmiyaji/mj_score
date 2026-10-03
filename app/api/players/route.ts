@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { playerOperations } from '@/lib/database'
-import { getRequestContext } from '@cloudflare/next-on-pages'
 import { getDb } from '@/lib/get-db'
 
-export const runtime = 'edge'
 
 // GET /api/players - Get all players
 export async function GET() {

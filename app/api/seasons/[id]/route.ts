@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { seasonOperations } from '@/lib/database'
-import { getRequestContext } from '@cloudflare/next-on-pages'
 import { getDb } from '@/lib/get-db'
 
-export const runtime = 'edge'
 
 // DELETE /api/seasons/[id] - Delete a season
 export async function DELETE(
