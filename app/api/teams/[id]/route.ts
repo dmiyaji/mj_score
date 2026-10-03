@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { teamOperations } from '@/lib/database'
+import type { Team } from '@/lib/types'
 import { getDb } from '@/lib/get-db'
 
 
@@ -10,7 +11,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const updates = await request.json()
+    const updates = (await request.json()) as Partial<Pick<Team, "name" | "color">>
     const db = await getDb()
     const team = await teamOperations.update(db, id, updates)
     return NextResponse.json(team)

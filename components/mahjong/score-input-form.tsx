@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Settings2, Calculator } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { gameResultApi } from "@/lib/api-client"
+import { calculateGamePoints } from "@/lib/scoring"
 import type { Team, Player, Season } from "@/lib/types"
 
 interface ScoreInputFormProps {
@@ -87,56 +88,7 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
   }
 
   // ポイント計算
-  const calculatePoints = () => {
-    const playersWithRank = players
-      .map((player, index) => ({ ...player, originalIndex: index }))
-      .sort((a, b) => b.score - a.score)
-
-    const rankedPlayers: Array<{
-      name: string
-      score: number
-      penaltyPoints: number
-      teamId: string
-      originalIndex: number
-      rank: number
-    }> = []
-    let currentRank = 1
-
-    for (let i = 0; i < playersWithRank.length; i++) {
-      const player = playersWithRank[i]
-
-      if (i > 0 && playersWithRank[i - 1].score !== player.score) {
-        currentRank = i + 1
-      }
-
-      rankedPlayers.push({ ...player, rank: currentRank })
-    }
-
-    const rankPoints = [50.0, 10.0, -10.0, -30.0]
-    const playersWithPoints = rankedPlayers.map((player) => {
-      const sameRankPlayers = rankedPlayers.filter((p) => p.rank === player.rank)
-      const sameRankCount = sameRankPlayers.length
-
-      let totalRankPoints = 0
-      for (let i = player.rank - 1; i < player.rank - 1 + sameRankCount; i++) {
-        totalRankPoints += rankPoints[i] || 0
-      }
-
-      const averageRankPoints = totalRankPoints / sameRankCount
-      const points = (player.score - 30000) / 1000 + averageRankPoints
-
-      return {
-        name: player.name,
-        score: player.score,
-        points: Math.round(points * 10) / 10,
-        penaltyPoints: player.penaltyPoints,
-        teamId: player.teamId,
-        rank: player.rank,
-      }
-    })
-
-    return playersWithPoints.sort((a, b) => a.rank - b.rank)
-  }
+  const calculatePoints = () => calculateGamePoints(players)
 
   // 成績を保存
   const saveGameResult = async () => {

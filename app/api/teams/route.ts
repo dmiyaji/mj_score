@@ -21,7 +21,7 @@ export async function GET() {
 // POST /api/teams - Create a new team
 export async function POST(request: NextRequest) {
   try {
-    const { name, color } = await request.json()
+    const { name, color } = (await request.json()) as { name?: string; color?: string }
 
     if (!name || !color) {
       return NextResponse.json(

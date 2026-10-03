@@ -249,7 +249,7 @@ export const gameResultOperations = {
     let currentStage = stage;
 
     if (!activeSeasonId || !currentStage) {
-      let activeSeason = await seasonOperations.getActive(db);
+      const activeSeason = await seasonOperations.getActive(db);
 
       if (!activeSeason) {
         throw new Error('アクティブなシーズンが設定されていません。成績入力の前にシーズンを作成してアクティブにしてください。');
@@ -317,7 +317,7 @@ export const gameResultOperations = {
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     let updateQuery = 'UPDATE game_results SET updated_at = ?'
-    let updateParams: any[] = [now]
+    const updateParams: any[] = [now]
 
     if (seasonId) {
       updateQuery += ', season_id = ?'
@@ -378,8 +378,8 @@ export const statsOperations = {
       });
     });
 
-    let whereConditions = []
-    let queryParams: any[] = []
+    const whereConditions = []
+    const queryParams: any[] = []
 
     if (teamFilter && teamFilter !== "all") {
       whereConditions.push("pgr.team_id = ?")
@@ -508,8 +508,8 @@ export const statsOperations = {
 
   // チーム統計取得（期間フィルター対応）
   async getTeamStats(db: D1Database, dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: 'REGULAR' | 'FINAL'): Promise<TeamStats[]> {
-    let whereConditions = ["t.name != '未所属'"] // 未所属チームを除外
-    let queryParams: any[] = []
+    const whereConditions = ["t.name != '未所属'"] // 未所属チームを除外
+    const queryParams: any[] = []
 
     if (dateFrom) {
       whereConditions.push("gr.game_date >= ?")

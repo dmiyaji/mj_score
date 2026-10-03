@@ -10,6 +10,7 @@ import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
 import { gameResultApi } from "@/lib/api-client"
+import { calculateGamePoints } from "@/lib/scoring"
 import type { Team, Player, GameResult, PlayerGameResult, Season } from "@/lib/types"
 
 interface GameHistoryProps {
@@ -67,49 +68,18 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
     }
 
     try {
-      // ポイント・順位の自動計算 (score-input-form.tsxのロジックと同じ)
-      const playersWithRank = editData
-        .map((player, index) => ({ ...player, originalIndex: index }))
-        .sort((a, b) => Number(b.score) - Number(a.score))
-
-      const rankedPlayers: Array<any> = []
-      let currentRank = 1
-
-      for (let i = 0; i < playersWithRank.length; i++) {
-        const player = playersWithRank[i]
-        if (i > 0 && playersWithRank[i - 1].score !== player.score) {
-          currentRank = i + 1
-        }
-        rankedPlayers.push({ ...player, rank: currentRank })
-      }
-
-      const rankPoints = [50.0, 10.0, -10.0, -30.0]
-      const playersWithPoints = rankedPlayers.map((player) => {
-        const sameRankPlayers = rankedPlayers.filter((p) => p.rank === player.rank)
-        const sameRankCount = sameRankPlayers.length
-
-        let totalRankPoints = 0
-        for (let i = player.rank - 1; i < player.rank - 1 + sameRankCount; i++) {
-          totalRankPoints += rankPoints[i] || 0
-        }
-
-        const averageRankPoints = totalRankPoints / sameRankCount
-        const points = (Number(player.score) - 30000) / 1000 + averageRankPoints
-        const penaltyPoints = Number(player.penalty_points || 0)
-
-        // penaltyPointsは入力されたものを保持して別途合算（※入力通り）
-        return {
-          id: player.id,
-          playerId: player.player_id,
-          teamId: player.team_id,
-          score: Number(player.score),
-          points: Math.round(points * 10) / 10,
-          penaltyPoints: penaltyPoints,
-          rank: player.rank,
-        }
-      })
-
-      const submitData = playersWithPoints.sort((a, b) => a.rank - b.rank)
+      // ポイント・順位の自動計算（penaltyPoints は入力値をそのまま保持して別途合算）
+      const submitData = calculateGamePoints(
+        editData.map((player) => ({ ...player, score: Number(player.score) }))
+      ).map((player) => ({
+        id: player.id,
+        playerId: player.player_id,
+        teamId: player.team_id,
+        score: player.score,
+        points: player.points,
+        penaltyPoints: Number(player.penalty_points || 0),
+        rank: player.rank,
+      }))
 
       await gameResultApi.update(editingGameId, submitData)
       setEditingGameId(null)

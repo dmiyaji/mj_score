@@ -1,0 +1,9 @@
+.next
+.open-next
+.wrangler
+.local
+coverage
+node_modules
+package-lock.json
+cloudflare-env.d.ts
+components/ui

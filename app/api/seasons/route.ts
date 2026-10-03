@@ -21,7 +21,7 @@ export async function GET() {
 // POST /api/seasons - Create a new season
 export async function POST(request: NextRequest) {
     try {
-        const { name } = await request.json()
+        const { name } = (await request.json()) as { name?: string }
 
         if (!name) {
             return NextResponse.json(

@@ -5,13 +5,6 @@ initOpenNextCloudflareForDev()
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // TODO: PR3 で ESLint / 型エラーを解消したら外す
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     unoptimized: true,
   },
