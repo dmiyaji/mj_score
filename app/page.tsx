@@ -69,10 +69,10 @@ export default function MahjongScoreManager() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <div className="container mx-auto p-4 max-w-7xl">
-          <div className="flex items-center justify-center h-64">
+        <div className="container mx-auto max-w-7xl p-4">
+          <div className="flex h-64 items-center justify-center">
             <div className="flex flex-col items-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
               <div className="text-lg font-medium text-slate-700">データを読み込み中...</div>
             </div>
           </div>
@@ -85,10 +85,10 @@ export default function MahjongScoreManager() {
   if (currentView === "publicRanking") {
     return (
       <div className="relative">
-        <div className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-50">
+        <div className="fixed bottom-4 left-4 z-50 sm:bottom-6 sm:left-6">
           <button
             onClick={() => setCurrentView("teamRanking")}
-            className="px-4 py-2 bg-slate-900/60 text-slate-300 hover:bg-slate-800 hover:text-white backdrop-blur-md border border-slate-700 transition-all duration-300 rounded-lg text-xs sm:text-sm shadow-lg"
+            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs text-slate-300 shadow-lg backdrop-blur-md transition-all duration-300 hover:bg-slate-800 hover:text-white sm:text-sm"
           >
             ← 管理画面に戻る
           </button>
@@ -105,7 +105,7 @@ export default function MahjongScoreManager() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <div className="container mx-auto p-2 sm:p-4 max-w-7xl">
+      <div className="container mx-auto max-w-7xl p-2 sm:p-4">
         <Header
           currentView={currentView}
           onTabChange={onTabChange}
@@ -130,14 +130,21 @@ export default function MahjongScoreManager() {
 
         {/* メインコンテンツ */}
         {currentView === "input" && (
-          <ScoreInputForm teams={teams} registeredPlayers={registeredPlayers} seasons={seasons} onDataUpdate={loadData} />
+          <ScoreInputForm
+            teams={teams}
+            registeredPlayers={registeredPlayers}
+            seasons={seasons}
+            onDataUpdate={loadData}
+          />
         )}
 
         {currentView === "playerRanking" && (
           <PlayerRanking teams={teams} playerStats={playerStats} onLoadStats={loadStats} seasons={seasons} />
         )}
 
-        {currentView === "teamRanking" && <TeamRanking teamStats={teamStats} onLoadStats={loadStats} seasons={seasons} />}
+        {currentView === "teamRanking" && (
+          <TeamRanking teamStats={teamStats} onLoadStats={loadStats} seasons={seasons} />
+        )}
 
         {currentView === "playerManagement" && (
           <PlayerManagement teams={teams} registeredPlayers={registeredPlayers} onDataUpdate={loadData} />

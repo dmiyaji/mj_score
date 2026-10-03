@@ -14,7 +14,9 @@ export const RANK_POINTS = [50, 10, -10, -30] as const
  * - ポイント = (持ち点 - 返し点) / 1000 + 順位点。小数第1位で四捨五入する
  * - 戻り値は順位の昇順（同順位は入力順）
  */
-export function calculateGamePoints<T extends { score: number }>(players: T[]): Array<T & { rank: number; points: number }> {
+export function calculateGamePoints<T extends { score: number }>(
+  players: T[]
+): Array<T & { rank: number; points: number }> {
   const sorted = [...players].sort((a, b) => b.score - a.score)
 
   const ranked: Array<T & { rank: number }> = []
