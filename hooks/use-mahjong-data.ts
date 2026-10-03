@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { teamApi, playerApi, gameResultApi, statsApi } from "@/lib/api-client"
-import type { Team, Player, PlayerStats, TeamStats, Season } from "@/lib/supabase"
+import type { Team, Player, PlayerStats, TeamStats, Season } from "@/lib/types"
 import { seasonApi } from "@/lib/api-client"
 
 export function useMahjongData() {

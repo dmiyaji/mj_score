@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Settings2, Calculator } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { gameResultApi } from "@/lib/api-client"
-import type { Team, Player, Season } from "@/lib/supabase"
+import type { Team, Player, Season } from "@/lib/types"
 
 interface ScoreInputFormProps {
   teams: Team[]

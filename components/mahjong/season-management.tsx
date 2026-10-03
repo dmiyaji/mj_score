@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Map, Plus, Play, Trophy, CheckCircle2, CircleDashed, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { seasonApi } from "@/lib/api-client"
-import type { Season } from "@/lib/supabase"
+import type { Season } from "@/lib/types"
 
 interface SeasonManagementProps {
     seasons: Season[]

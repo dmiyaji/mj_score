@@ -10,7 +10,7 @@ import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
 import { gameResultApi } from "@/lib/api-client"
-import type { Team, Player, GameResult, PlayerGameResult, Season } from "@/lib/supabase"
+import type { Team, Player, GameResult, PlayerGameResult, Season } from "@/lib/types"
 
 interface GameHistoryProps {
   teams: Team[]

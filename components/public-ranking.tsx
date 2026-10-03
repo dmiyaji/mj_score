@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
 import { statsApi, seasonApi } from "@/lib/api-client"
-import type { TeamStats, Season } from "@/lib/supabase"
+import type { TeamStats, Season } from "@/lib/types"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import Image from "next/image"

@@ -25,3 +25,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# cloudflare (wrangler / next-on-pages)
+.wrangler/
+.dev.vars*
+!.dev.vars.example
+
+# local database
+*.sqlite
+*.db
+
+# production D1 dumps / backups (個人データを含むためコミット禁止)
+.local/
+backup*.sql

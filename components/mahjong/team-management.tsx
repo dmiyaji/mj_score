@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Users, UserPlus, Edit, Trash2, Palette } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { teamApi } from "@/lib/api-client"
-import type { Team, Player } from "@/lib/supabase"
+import type { Team, Player } from "@/lib/types"
 
 interface TeamManagementProps {
   teams: Team[]

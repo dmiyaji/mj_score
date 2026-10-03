@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Users, TrendingUp, TrendingDown, Crown, Medal, Star, Map as MapIcon, ChevronDown, ChevronUp } from "lucide-react"
-import type { TeamStats, Season, PlayerStats } from "@/lib/supabase"
+import type { TeamStats, Season, PlayerStats } from "@/lib/types"
 import { statsApi } from "@/lib/api-client"
 
 interface TeamRankingProps {

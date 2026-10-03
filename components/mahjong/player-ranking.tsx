@@ -9,7 +9,7 @@ import { TableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Trophy, TrendingUp, TrendingDown, Crown, Medal, Star } from "lucide-react"
-import type { Team, PlayerStats, Season } from "@/lib/supabase"
+import type { Team, PlayerStats, Season } from "@/lib/types"
 
 interface PlayerRankingProps {
   teams: Team[]

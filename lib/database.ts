@@ -6,7 +6,7 @@ import {
   type PlayerStats,
   type TeamStats,
   type Season,
-} from "./supabase"
+} from "./types"
 
 
 // シーズン関連の操作

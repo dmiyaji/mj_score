@@ -1,4 +1,4 @@
-import type { Team, Player, GameResult, PlayerStats, TeamStats } from "./supabase"
+import type { Team, Player, GameResult, PlayerStats, TeamStats } from "./types"
 
 // Base API client functions
 async function apiRequest<T>(
