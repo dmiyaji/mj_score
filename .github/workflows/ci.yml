@@ -4,9 +4,8 @@ on:
   push:
     branches:
       - main
+  # PR を積み重ねる場合（base が main 以外）も実行する
   pull_request:
-    branches:
-      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
