@@ -153,11 +153,11 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
   }
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
-      <CardHeader className="pb-3 sm:pb-6 bg-gradient-to-r from-slate-50 to-gray-50 rounded-t-lg">
+    <Card className="border border-white/20 bg-white/80 shadow-xl backdrop-blur-sm">
+      <CardHeader className="rounded-t-lg bg-gradient-to-r from-slate-50 to-gray-50 pb-3 sm:pb-6">
         <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-          <div className="p-2 bg-gradient-to-r from-slate-500 to-gray-600 rounded-lg shadow-lg">
-            <Database className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+          <div className="rounded-lg bg-gradient-to-r from-slate-500 to-gray-600 p-2 shadow-lg">
+            <Database className="h-4 w-4 text-white sm:h-5 sm:w-5" />
           </div>
           データ管理
         </CardTitle>
@@ -165,29 +165,29 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
       </CardHeader>
       <CardContent className="p-6">
         <Tabs defaultValue="export" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-white/50 backdrop-blur-sm border border-white/20">
+          <TabsList className="grid w-full grid-cols-2 border border-white/20 bg-white/50 backdrop-blur-sm">
             <TabsTrigger
               value="export"
-              className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white"
+              className="text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white sm:text-sm"
             >
-              <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <Download className="mr-1 h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
               エクスポート
             </TabsTrigger>
             <TabsTrigger
               value="import"
-              className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+              className="text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white sm:text-sm"
             >
-              <Upload className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <Upload className="mr-1 h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
               インポート
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="export" className="space-y-4 mt-6">
+          <TabsContent value="export" className="mt-6 space-y-4">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">エクスポート形式</Label>
                 <Select value={exportFormat} onValueChange={(value: "json" | "csv") => setExportFormat(value)}>
-                  <SelectTrigger className="text-sm border-2 focus:border-green-500">
+                  <SelectTrigger className="border-2 text-sm focus:border-green-500">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -208,7 +208,7 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                     value={exportTable}
                     onValueChange={(value: "teams" | "players" | "gameResults") => setExportTable(value)}
                   >
-                    <SelectTrigger className="text-sm border-2 focus:border-green-500">
+                    <SelectTrigger className="border-2 text-sm focus:border-green-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -229,21 +229,21 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
               <Button
                 onClick={handleExport}
                 disabled={isExporting}
-                className="w-full text-sm bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transition-all duration-200"
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-sm transition-all duration-200 hover:from-green-600 hover:to-emerald-700"
               >
-                <Download className="w-4 h-4 mr-2" />
+                <Download className="mr-2 h-4 w-4" />
                 {isExporting ? "エクスポート中..." : "エクスポート"}
               </Button>
             </div>
           </TabsContent>
 
-          <TabsContent value="import" className="space-y-4 mt-6">
+          <TabsContent value="import" className="mt-6 space-y-4">
             <div className="space-y-4">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                   <div className="text-xs text-amber-800">
-                    <p className="font-medium mb-1">注意事項</p>
+                    <p className="mb-1 font-medium">注意事項</p>
                     <ul className="space-y-1 text-xs">
                       <li>• インポート前に必ずデータをバックアップしてください</li>
                       <li>• 同一IDや同名のデータがある場合は**最新の情報に上書き**されます</li>
@@ -259,7 +259,7 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                   value={importType}
                   onValueChange={(value: "teams" | "players" | "gameResults") => setImportType(value)}
                 >
-                  <SelectTrigger className="text-sm border-2 focus:border-blue-500">
+                  <SelectTrigger className="border-2 text-sm focus:border-blue-500">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -289,9 +289,9 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                     type="file"
                     accept=".json,.csv"
                     onChange={handleFileSelect}
-                    className="text-sm border-2 focus:border-blue-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    className="border-2 text-sm file:mr-2 file:rounded file:border-0 file:bg-blue-50 file:px-2 file:py-1 file:text-xs file:text-blue-700 hover:file:bg-blue-100 focus:border-blue-500"
                   />
-                  <FileText className="w-4 h-4 text-gray-400" />
+                  <FileText className="h-4 w-4 text-gray-400" />
                 </div>
                 {importFile && (
                   <p className="text-xs text-muted-foreground">
@@ -301,11 +301,11 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
               </div>
 
               {importType === "restore" && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                    <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" />
                     <div className="text-xs text-red-800">
-                      <p className="font-bold mb-1">【重要】完全復元の確認</p>
+                      <p className="mb-1 font-bold">【重要】完全復元の確認</p>
                       <p>
                         この操作を実行すると、現在のデータベース内の**すべてのデータ（設定、プレイヤー、成績）が削除され**、
                         選択したバックグラウンドファイルの内容で完全に置き換えられます。
@@ -321,9 +321,9 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                   <AlertDialogTrigger asChild>
                     <Button
                       disabled={!importFile || isImporting}
-                      className="w-full text-sm bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 transition-all duration-200"
+                      className="w-full bg-gradient-to-r from-red-600 to-rose-700 text-sm transition-all duration-200 hover:from-red-700 hover:to-rose-800"
                     >
-                      <Upload className="w-4 h-4 mr-2" />
+                      <Upload className="mr-2 h-4 w-4" />
                       {isImporting ? "復元中..." : "データベースを完全復元する"}
                     </Button>
                   </AlertDialogTrigger>
@@ -336,10 +336,7 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleImport}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
+                      <AlertDialogAction onClick={handleImport} className="bg-red-600 text-white hover:bg-red-700">
                         実行する
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -349,9 +346,9 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
                 <Button
                   onClick={handleImport}
                   disabled={!importFile || isImporting}
-                  className="w-full text-sm bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-sm transition-all duration-200 hover:from-blue-600 hover:to-purple-700"
                 >
-                  <Upload className="w-4 h-4 mr-2" />
+                  <Upload className="mr-2 h-4 w-4" />
                   {isImporting ? "インポート中..." : "追加・上書きインポート"}
                 </Button>
               )}
