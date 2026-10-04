@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth"
 import { exportOperations } from "@/lib/database"
 import { getDb } from "@/lib/get-db"
 
@@ -7,6 +8,9 @@ import { getDb } from "@/lib/get-db"
 // GET /api/export?type=players&format=csv - Export players as CSV
 // GET /api/export?type=gameResults&format=csv - Export game results as CSV
 export async function GET(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get("type") || "all"

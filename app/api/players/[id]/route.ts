@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth"
 import { playerOperations } from "@/lib/database"
 import { getDb } from "@/lib/get-db"
 
 // PUT /api/players/[id] - Update a player
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const updates = (await request.json()) as any
@@ -18,6 +22,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 // DELETE /api/players/[id] - Delete a player
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const db = await getDb()

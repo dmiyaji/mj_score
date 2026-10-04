@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth"
 import { importOperations } from "@/lib/database"
 import { getDb } from "@/lib/get-db"
 
 // POST /api/import - Import data
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { type, data, csvText } = (await request.json()) as any
 

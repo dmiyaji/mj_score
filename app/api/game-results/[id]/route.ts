@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth"
 import { gameResultOperations } from "@/lib/database"
 import { getDb } from "@/lib/get-db"
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const db = await getDb()
@@ -16,6 +20,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
 // PUT /api/game-results/[id] - Update a game result
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const body = (await request.json()) as any

@@ -11,6 +11,7 @@ interface PasswordDialogProps {
   passwordInput: string
   setPasswordInput: (password: string) => void
   onSubmit: () => void
+  isSubmitting?: boolean
 }
 
 export default function PasswordDialog({
@@ -19,6 +20,7 @@ export default function PasswordDialog({
   passwordInput,
   setPasswordInput,
   onSubmit,
+  isSubmitting = false,
 }: PasswordDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -41,16 +43,18 @@ export default function PasswordDialog({
               placeholder="パスワードを入力"
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+              onKeyDown={(e) => e.key === "Enter" && !isSubmitting && onSubmit()}
+              disabled={isSubmitting}
               className="border-2 text-sm transition-colors duration-200 focus:border-blue-500"
             />
           </div>
           <div className="flex gap-2">
             <Button
               onClick={onSubmit}
+              disabled={isSubmitting}
               className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-sm transition-all duration-200 hover:from-blue-600 hover:to-purple-700"
             >
-              認証
+              {isSubmitting ? "認証中..." : "認証"}
             </Button>
             <Button
               variant="outline"

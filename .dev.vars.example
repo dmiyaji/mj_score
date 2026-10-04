@@ -1,3 +1,12 @@
-# npm run preview (wrangler / workerd) 用のローカル Secret
-# このファイルを .dev.vars にコピーして値を設定する（.dev.vars はコミットしない）
+# ローカル（npm run dev / npm run preview）用の Secret
+# このファイルを .dev.vars にコピーして使う（.dev.vars はコミットしない）
 # 型定義（cloudflare-env.d.ts）はこのファイルのキーから生成される: npm run types:cf
+#
+# 下記はローカル開発専用の値（管理者パスワード: dev-password）。本番には絶対に使わないこと。
+# 本番の設定方法は docs/RELEASE.md「管理者パスワードの設定・変更」を参照。
+
+# 管理者パスワードのハッシュ（生成: node scripts/generate-hash.mjs <password>）
+ADMIN_PASSWORD_HASH=pbkdf2:100000:ad1fa9df3415b3bae38efbaf816008ac:60cdcf97e1ad69a68877eb88c7aadcb4c76c15afe28787ed4f60d14db2277e97
+
+# セッション署名用の鍵（32 文字以上のランダム文字列）
+SESSION_SECRET=local-dev-session-secret-0123456789abcdef

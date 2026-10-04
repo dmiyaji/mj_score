@@ -74,6 +74,25 @@ git push origin v1.2.0
   - `CLOUDFLARE_ACCOUNT_ID`
 - main のブランチ保護: PR 必須、CI（Lint & Typecheck / Unit Tests & Coverage / Cloudflare OpenNext Build）必須
 
+### 管理者パスワードの設定・変更（本番 Secret）
+
+管理者ログインには Workers の Secret が 2 つ必要。未設定の場合、管理者ログインはすべて失敗する（成績入力・閲覧は影響なし）。
+
+| Secret                | 内容                                      | 生成方法                                                                         |
+| --------------------- | ----------------------------------------- | -------------------------------------------------------------------------------- |
+| `ADMIN_PASSWORD_HASH` | 管理者パスワードの PBKDF2 ハッシュ        | `node scripts/generate-hash.mjs <パスワード>`                                    |
+| `SESSION_SECRET`      | セッション Cookie の署名鍵（32 文字以上） | `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
+
+設定方法（どちらか）:
+
+- コマンド: `npx wrangler secret put ADMIN_PASSWORD_HASH` / `npx wrangler secret put SESSION_SECRET`（実行後に値を貼り付ける。要 `npx wrangler login`）
+- ダッシュボード: Workers & Pages → `mj-score` → Settings → Variables and Secrets → Add（Type: **Secret**）
+
+Secret はデプロイしても消えない。反映は即時（再デプロイ不要）。
+
+- パスワード変更: `ADMIN_PASSWORD_HASH` を新しいハッシュで上書きする（既存のログインは有効期限 30 日まで継続）
+- 全端末を強制ログアウト: `SESSION_SECRET` を新しい値で上書きする
+
 ### Cloudflare Pages → Workers 移行（初回のみ）
 
 1. 上記 Secret を登録した状態で最初のタグ（例: `v1.0.0`）を push し、Workers（`mj-score`）にデプロイする

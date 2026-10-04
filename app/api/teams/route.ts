@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth"
 import { teamOperations } from "@/lib/database"
 import { getDb } from "@/lib/get-db"
 
@@ -16,6 +17,9 @@ export async function GET() {
 
 // POST /api/teams - Create a new team
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { name, color } = (await request.json()) as { name?: string; color?: string }
 

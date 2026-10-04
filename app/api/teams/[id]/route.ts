@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth"
 import { teamOperations } from "@/lib/database"
 import type { Team } from "@/lib/types"
 import { getDb } from "@/lib/get-db"
 
 // PUT /api/teams/[id] - Update a team
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const updates = (await request.json()) as Partial<Pick<Team, "name" | "color">>
@@ -19,6 +23,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 // DELETE /api/teams/[id] - Delete a team
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const db = await getDb()
