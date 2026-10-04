@@ -1,0 +1,124 @@
+name: Release (Production)
+
+# 本番リリース
+#   - タグ push (vX.Y.Z) で自動デプロイ
+#   - Actions 画面から既存タグを指定して手動デプロイ（切り戻しにも使用）
+# 必要なリポジトリ Secret: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "デプロイするタグ (例: v1.2.0)"
+        required: true
+        type: string
+      skip_migrations:
+        description: "D1 マイグレーションをスキップする（旧タグへの切り戻し時）"
+        type: boolean
+        default: false
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  DB_NAME: mj-score-db
+
+jobs:
+  verify:
+    name: Verify Tag & Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate tag format
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid tag: $TAG (expected vX.Y.Z)"
+            exit 1
+          fi
+
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+
+      - name: Ensure tag is on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Tag $TAG is not reachable from main"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm run test
+
+  deploy:
+    name: Deploy to Cloudflare
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Cloudflare
+        run: npm run build:cf
+
+      # 障害時に `wrangler d1 time-travel restore` で戻せるよう、適用前の状態をログに残す
+      - name: Record D1 state before migration
+        run: |
+          npx wrangler d1 time-travel info "$DB_NAME"
+          npx wrangler d1 migrations list "$DB_NAME" --remote
+
+      - name: Apply D1 migrations
+        if: ${{ !inputs.skip_migrations }}
+        run: npx wrangler d1 migrations apply "$DB_NAME" --remote
+
+      - name: Deploy worker
+        run: npx opennextjs-cloudflare deploy
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" --verify-tag --generate-notes

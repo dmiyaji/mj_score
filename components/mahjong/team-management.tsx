@@ -163,12 +163,12 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
   }
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
-      <CardHeader className="pb-3 sm:pb-6 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-lg">
+    <Card className="border border-white/20 bg-white/80 shadow-xl backdrop-blur-sm">
+      <CardHeader className="rounded-t-lg bg-gradient-to-r from-purple-50 to-indigo-50 pb-3 sm:pb-6">
         <CardTitle className="flex items-center justify-between text-lg sm:text-xl">
           <span className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg shadow-lg">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            <div className="rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 p-2 shadow-lg">
+              <Users className="h-4 w-4 text-white sm:h-5 sm:w-5" />
             </div>
             チーム管理
           </span>
@@ -177,16 +177,16 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs sm:text-sm h-10 border-2 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
+                className="h-10 border-2 text-xs transition-all duration-200 hover:border-purple-300 hover:bg-purple-50 sm:text-sm"
               >
-                <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <UserPlus className="mr-1 h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
                 追加
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[90vw] max-w-md bg-white/95 backdrop-blur-sm border border-white/20">
+            <DialogContent className="w-[90vw] max-w-md border border-white/20 bg-white/95 backdrop-blur-sm">
               <DialogHeader>
-                <DialogTitle className="text-lg flex items-center gap-2">
-                  <UserPlus className="w-5 h-5 text-purple-600" />
+                <DialogTitle className="flex items-center gap-2 text-lg">
+                  <UserPlus className="h-5 w-5 text-purple-600" />
                   新しいチームを作成
                 </DialogTitle>
                 <DialogDescription className="text-sm">チーム名とカラーを選択してください</DialogDescription>
@@ -201,7 +201,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
                     placeholder="チーム名"
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
-                    className="text-sm border-2 focus:border-purple-500 transition-colors duration-200"
+                    className="border-2 text-sm transition-colors duration-200 focus:border-purple-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -212,7 +212,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
                         key={color.value}
                         type="button"
                         onClick={() => setNewTeamColor(color.value)}
-                        className={`p-2 rounded-lg border-2 transition-all duration-200 ${
+                        className={`rounded-lg border-2 p-2 transition-all duration-200 ${
                           newTeamColor === color.value
                             ? "border-purple-500 ring-2 ring-purple-200"
                             : "border-gray-200 hover:border-gray-300"
@@ -226,14 +226,14 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
                 <div className="flex gap-2">
                   <Button
                     onClick={addNewTeam}
-                    className="flex-1 text-sm bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 transition-all duration-200"
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-sm transition-all duration-200 hover:from-purple-600 hover:to-indigo-700"
                   >
                     作成
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setIsTeamDialogOpen(false)}
-                    className="text-sm border-2 hover:bg-slate-50 transition-colors duration-200"
+                    className="border-2 text-sm transition-colors duration-200 hover:bg-slate-50"
                   >
                     キャンセル
                   </Button>
@@ -245,7 +245,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
       </CardHeader>
       <CardContent className="p-6">
         {teams.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8 text-sm bg-slate-50 rounded-xl">
+          <p className="rounded-xl bg-slate-50 py-8 text-center text-sm text-muted-foreground">
             チームが作成されていません
           </p>
         ) : (
@@ -253,11 +253,11 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
             {teams.map((team) => (
               <div
                 key={team.id}
-                className="flex items-center justify-between p-4 border-2 rounded-xl text-sm bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-200"
+                className="flex items-center justify-between rounded-xl border-2 bg-white/50 p-4 text-sm backdrop-blur-sm transition-all duration-200 hover:bg-white/70"
               >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                   {editingTeam?.id === team.id ? (
-                    <div className="flex items-center gap-2 flex-1">
+                    <div className="flex flex-1 items-center gap-2">
                       <Input
                         value={editingTeam.name}
                         onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
@@ -268,7 +268,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
                             setEditingTeam(null)
                           }
                         }}
-                        className="text-sm h-8 flex-1 border-2 focus:border-purple-500"
+                        className="h-8 flex-1 border-2 text-sm focus:border-purple-500"
                         autoFocus
                       />
                       <div className="flex gap-1">
@@ -277,7 +277,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
                             key={color.value}
                             type="button"
                             onClick={() => setEditingTeam({ ...editingTeam, color: color.value })}
-                            className={`w-6 h-6 rounded border-2 transition-all duration-200 ${color.value} ${
+                            className={`h-6 w-6 rounded border-2 transition-all duration-200 ${color.value} ${
                               editingTeam.color === color.value
                                 ? "border-purple-500 ring-1 ring-purple-200"
                                 : "border-gray-300 hover:border-gray-400"
@@ -289,7 +289,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
                       <Button
                         size="sm"
                         onClick={() => updateTeam(team.id, editingTeam.name, editingTeam.color)}
-                        className="h-8 px-3 text-xs bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                        className="h-8 bg-gradient-to-r from-green-500 to-emerald-600 px-3 text-xs hover:from-green-600 hover:to-emerald-700"
                       >
                         保存
                       </Button>
@@ -297,24 +297,24 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
                         variant="outline"
                         size="sm"
                         onClick={() => setEditingTeam(null)}
-                        className="h-8 px-3 text-xs border-2 hover:bg-slate-50"
+                        className="h-8 border-2 px-3 text-xs hover:bg-slate-50"
                       >
                         キャンセル
                       </Button>
                     </div>
                   ) : (
                     <>
-                      <Badge className={`px-3 py-1 rounded-full text-sm border ${team.color}`}>{team.name}</Badge>
+                      <Badge className={`rounded-full border px-3 py-1 text-sm ${team.color}`}>{team.name}</Badge>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setEditingTeam({ id: team.id, name: team.name, color: team.color })}
-                        className="h-8 w-8 p-0 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-all duration-200"
+                        className="h-8 w-8 rounded-full p-0 text-gray-500 transition-all duration-200 hover:bg-purple-50 hover:text-purple-600"
                       >
-                        <Edit className="w-3 h-3" />
+                        <Edit className="h-3 w-3" />
                       </Button>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Palette className="w-3 h-3" />
+                        <Palette className="h-3 w-3" />
                         <span>{getColorName(team.color)}</span>
                         <span>•</span>
                         <span>{getTeamPlayerCount(team.id)}人</span>
@@ -322,19 +322,19 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
                     </>
                   )}
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex flex-shrink-0 items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => deleteTeam(team.id)}
                     disabled={getTeamPlayerCount(team.id) > 0}
-                    className={`h-8 w-8 p-0 border-2 transition-all duration-200 ${
+                    className={`h-8 w-8 border-2 p-0 transition-all duration-200 ${
                       getTeamPlayerCount(team.id) > 0
-                        ? "opacity-50 cursor-not-allowed"
-                        : "text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-300"
+                        ? "cursor-not-allowed opacity-50"
+                        : "text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
                     }`}
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
               </div>

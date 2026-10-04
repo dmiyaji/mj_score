@@ -1,0 +1,3 @@
+# npm run preview (wrangler / workerd) 用のローカル Secret
+# このファイルを .dev.vars にコピーして値を設定する（.dev.vars はコミットしない）
+# 型定義（cloudflare-env.d.ts）はこのファイルのキーから生成される: npm run types:cf

@@ -1,9 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { exportOperations } from '@/lib/database'
-import { getRequestContext } from '@cloudflare/next-on-pages'
-import { getDb } from '@/lib/get-db'
-
-export const runtime = 'edge'
+import { NextRequest, NextResponse } from "next/server"
+import { exportOperations } from "@/lib/database"
+import { getDb } from "@/lib/get-db"
 
 // GET /api/export?type=all&format=json - Export all data
 // GET /api/export?type=teams&format=csv - Export teams as CSV
@@ -12,24 +9,21 @@ export const runtime = 'edge'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type') || 'all'
-    const format = searchParams.get('format') || 'json'
+    const type = searchParams.get("type") || "all"
+    const format = searchParams.get("format") || "json"
 
-    if (format === 'csv' && type !== 'all') {
-      if (!['teams', 'players', 'gameResults'].includes(type)) {
-        return NextResponse.json(
-          { error: 'Invalid type for CSV export' },
-          { status: 400 }
-        )
+    if (format === "csv" && type !== "all") {
+      if (!["teams", "players", "gameResults"].includes(type)) {
+        return NextResponse.json({ error: "Invalid type for CSV export" }, { status: 400 })
       }
 
       const db = await getDb()
-      const csvData = await exportOperations.exportToCSV(db, type as 'teams' | 'players' | 'gameResults')
+      const csvData = await exportOperations.exportToCSV(db, type as "teams" | "players" | "gameResults")
 
       return new NextResponse(csvData, {
         headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="${type}.csv"`,
+          "Content-Type": "text/csv",
+          "Content-Disposition": `attachment; filename="${type}.csv"`,
         },
       })
     } else {
@@ -39,10 +33,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data)
     }
   } catch (error) {
-    console.error('Error exporting data:', error)
-    return NextResponse.json(
-      { error: 'Failed to export data' },
-      { status: 500 }
-    )
+    console.error("Error exporting data:", error)
+    return NextResponse.json({ error: "Failed to export data" }, { status: 500 })
   }
 }
