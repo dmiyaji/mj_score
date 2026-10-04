@@ -33,13 +33,23 @@ npm run preview
 
 ## 2. リリース
 
-PR → CI 通過 → main にマージ後、main の HEAD にタグを打って push する。
+PR → CI 通過 → main にマージ後、main の HEAD にタグを打つ。方法は次のどちらでもよい。
+
+**A. コマンドで作成**
 
 ```bash
 git switch main && git pull
 git tag -a v1.2.0 -m "v1.2.0"
 git push origin v1.2.0
 ```
+
+**B. GitHub の画面で作成**
+
+1. Releases → **Draft a new release**
+2. Choose a tag に `v1.2.0` を入力 → **Create new tag**、Target は `main`
+3. **Generate release notes** でリリースノートを生成 → **Publish release**
+
+※ Draft のまま保存した時点ではタグは作られず、デプロイも起動しない。Publish した時点で起動する。
 
 - バージョン: スキーマ変更・機能追加は minor、修正は patch
 - タグ push で `Release (Production)` が起動し、検証 → ビルド → D1 マイグレーション → デプロイ → GitHub Release 作成まで行う
