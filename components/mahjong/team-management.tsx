@@ -80,7 +80,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
     } catch (error) {
       toast({
         title: "エラー",
-        description: "チームの作成に失敗しました",
+        description: error instanceof Error ? error.message : "チームの作成に失敗しました",
         variant: "destructive",
       })
     }
@@ -117,7 +117,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
     } catch (error) {
       toast({
         title: "エラー",
-        description: "チーム情報の更新に失敗しました",
+        description: error instanceof Error ? error.message : "チーム情報の更新に失敗しました",
         variant: "destructive",
       })
     }
@@ -145,7 +145,7 @@ export default function TeamManagement({ teams, registeredPlayers, onDataUpdate 
     } catch (error) {
       toast({
         title: "エラー",
-        description: "チームの削除に失敗しました",
+        description: error instanceof Error ? error.message : "チームの削除に失敗しました",
         variant: "destructive",
       })
     }

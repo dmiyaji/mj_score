@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { isAuthenticated } from "@/lib/auth"
 import { gameResultOperations, playerOperations } from "@/lib/database"
-import { buildNewPlayerResults, createGameResultSchema, firstIssueMessage } from "@/lib/game-result-input"
+import { buildNewPlayerResults, createGameResultSchema } from "@/lib/game-result-input"
+import { firstIssueMessage } from "@/lib/validation"
 import { getDb } from "@/lib/get-db"
 
 // GET /api/game-results - Get all game results

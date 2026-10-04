@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth"
+import { createSeasonSchema } from "@/lib/admin-input"
 import { seasonOperations } from "@/lib/database"
 import { getDb } from "@/lib/get-db"
+import { parseBody } from "@/lib/validation"
 
 // GET /api/seasons - Get all seasons
 export async function GET() {
@@ -20,15 +22,12 @@ export async function POST(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
 
+  const { data, error } = await parseBody(request, createSeasonSchema)
+  if (error) return error
+
   try {
-    const { name } = (await request.json()) as { name?: string }
-
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 })
-    }
-
     const db = await getDb()
-    const season = await seasonOperations.create(db, name)
+    const season = await seasonOperations.create(db, data.name)
     return NextResponse.json(season, { status: 201 })
   } catch (error) {
     console.error("Error creating season:", error)

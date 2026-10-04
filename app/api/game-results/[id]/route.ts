@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth"
 import { gameResultOperations, playerOperations } from "@/lib/database"
-import { buildUpdatedPlayerResults, firstIssueMessage, updateGameResultSchema } from "@/lib/game-result-input"
+import { buildUpdatedPlayerResults, updateGameResultSchema } from "@/lib/game-result-input"
+import { firstIssueMessage } from "@/lib/validation"
 import { getDb } from "@/lib/get-db"
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

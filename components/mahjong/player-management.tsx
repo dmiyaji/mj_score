@@ -90,7 +90,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     } catch (error) {
       toast({
         title: "エラー",
-        description: "プレイヤーの登録に失敗しました",
+        description: error instanceof Error ? error.message : "プレイヤーの登録に失敗しました",
         variant: "destructive",
       })
     }
@@ -138,7 +138,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     } catch (error) {
       toast({
         title: "エラー",
-        description: "チームの作成に失敗しました",
+        description: error instanceof Error ? error.message : "チームの作成に失敗しました",
         variant: "destructive",
       })
     }
@@ -175,7 +175,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     } catch (error) {
       toast({
         title: "エラー",
-        description: "チーム情報の更新に失敗しました",
+        description: error instanceof Error ? error.message : "チーム情報の更新に失敗しました",
         variant: "destructive",
       })
     }
@@ -205,7 +205,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     } catch (error) {
       toast({
         title: "エラー",
-        description: "チームの削除に失敗しました",
+        description: error instanceof Error ? error.message : "チームの削除に失敗しました",
         variant: "destructive",
       })
     }
@@ -242,7 +242,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     } catch (error) {
       toast({
         title: "エラー",
-        description: "プレイヤー名の変更に失敗しました",
+        description: error instanceof Error ? error.message : "プレイヤー名の変更に失敗しました",
         variant: "destructive",
       })
     }
@@ -260,7 +260,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     } catch (error) {
       toast({
         title: "エラー",
-        description: "プレイヤーの削除に失敗しました",
+        description: error instanceof Error ? error.message : "プレイヤーの削除に失敗しました",
         variant: "destructive",
       })
     }
@@ -278,7 +278,7 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     } catch (error) {
       toast({
         title: "エラー",
-        description: "プレイヤーのチーム変更に失敗しました",
+        description: error instanceof Error ? error.message : "プレイヤーのチーム変更に失敗しました",
         variant: "destructive",
       })
     }

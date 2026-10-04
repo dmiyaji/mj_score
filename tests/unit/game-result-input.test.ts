@@ -3,9 +3,9 @@ import {
   buildNewPlayerResults,
   buildUpdatedPlayerResults,
   createGameResultSchema,
-  firstIssueMessage,
   updateGameResultSchema,
 } from "@/lib/game-result-input"
+import { firstIssueMessage } from "@/lib/validation"
 
 const players = (...scores: number[]) => scores.map((score, i) => ({ playerId: `p${i + 1}`, score }))
 
