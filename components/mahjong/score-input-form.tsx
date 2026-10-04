@@ -160,7 +160,7 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
     } catch (error) {
       toast({
         title: "エラー",
-        description: "成績の保存に失敗しました",
+        description: error instanceof Error ? error.message : "成績の保存に失敗しました",
         variant: "destructive",
       })
     }
