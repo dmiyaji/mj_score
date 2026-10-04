@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { teamApi, playerApi, gameResultApi, statsApi } from "@/lib/api-client"
-import type { Team, Player, PlayerStats, TeamStats, Season } from "@/lib/supabase"
+import type { Team, Player, PlayerStats, TeamStats, Season } from "@/lib/types"
 import { seasonApi } from "@/lib/api-client"
 
 export function useMahjongData() {
@@ -24,7 +24,7 @@ export function useMahjongData() {
         teamApi.getAll(),
         playerApi.getAll(),
         gameResultApi.getAll(),
-        seasonApi.getAll()
+        seasonApi.getAll(),
       ])
 
       setTeams(teamsData)
@@ -44,19 +44,22 @@ export function useMahjongData() {
   }, [toast])
 
   // 統計データ読み込み
-  const loadStats = useCallback(async (teamFilter?: string, dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: 'REGULAR' | 'FINAL') => {
-    try {
-      const [playerStatsData, teamStatsData] = await Promise.all([
-        statsApi.getPlayerStats(teamFilter, dateFrom, dateTo, seasonId, stage),
-        statsApi.getTeamStats(dateFrom, dateTo, seasonId, stage),
-      ])
+  const loadStats = useCallback(
+    async (teamFilter?: string, dateFrom?: Date, dateTo?: Date, seasonId?: string, stage?: "REGULAR" | "FINAL") => {
+      try {
+        const [playerStatsData, teamStatsData] = await Promise.all([
+          statsApi.getPlayerStats(teamFilter, dateFrom, dateTo, seasonId, stage),
+          statsApi.getTeamStats(dateFrom, dateTo, seasonId, stage),
+        ])
 
-      setPlayerStats(playerStatsData)
-      setTeamStats(teamStatsData)
-    } catch (error) {
-      console.error("統計データの読み込みに失敗しました:", error)
-    }
-  }, [])
+        setPlayerStats(playerStatsData)
+        setTeamStats(teamStatsData)
+      } catch (error) {
+        console.error("統計データの読み込みに失敗しました:", error)
+      }
+    },
+    []
+  )
 
   // 初期データ読み込み
   useEffect(() => {

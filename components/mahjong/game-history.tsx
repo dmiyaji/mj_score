@@ -10,7 +10,8 @@ import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
 import { gameResultApi } from "@/lib/api-client"
-import type { Team, Player, GameResult, PlayerGameResult, Season } from "@/lib/supabase"
+import { calculateGamePoints } from "@/lib/scoring"
+import type { Team, Player, GameResult, PlayerGameResult, Season } from "@/lib/types"
 
 interface GameHistoryProps {
   teams: Team[]
@@ -20,7 +21,13 @@ interface GameHistoryProps {
   onDataUpdate: () => void
 }
 
-export default function GameHistory({ teams, registeredPlayers, gameResults, seasons = [], onDataUpdate }: GameHistoryProps) {
+export default function GameHistory({
+  teams,
+  registeredPlayers,
+  gameResults,
+  seasons = [],
+  onDataUpdate,
+}: GameHistoryProps) {
   const { toast } = useToast()
   const [editingGameId, setEditingGameId] = useState<string | null>(null)
   const [editData, setEditData] = useState<any[] | null>(null)
@@ -67,49 +74,18 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
     }
 
     try {
-      // ポイント・順位の自動計算 (score-input-form.tsxのロジックと同じ)
-      const playersWithRank = editData
-        .map((player, index) => ({ ...player, originalIndex: index }))
-        .sort((a, b) => Number(b.score) - Number(a.score))
-
-      const rankedPlayers: Array<any> = []
-      let currentRank = 1
-
-      for (let i = 0; i < playersWithRank.length; i++) {
-        const player = playersWithRank[i]
-        if (i > 0 && playersWithRank[i - 1].score !== player.score) {
-          currentRank = i + 1
-        }
-        rankedPlayers.push({ ...player, rank: currentRank })
-      }
-
-      const rankPoints = [50.0, 10.0, -10.0, -30.0]
-      const playersWithPoints = rankedPlayers.map((player) => {
-        const sameRankPlayers = rankedPlayers.filter((p) => p.rank === player.rank)
-        const sameRankCount = sameRankPlayers.length
-
-        let totalRankPoints = 0
-        for (let i = player.rank - 1; i < player.rank - 1 + sameRankCount; i++) {
-          totalRankPoints += rankPoints[i] || 0
-        }
-
-        const averageRankPoints = totalRankPoints / sameRankCount
-        const points = (Number(player.score) - 30000) / 1000 + averageRankPoints
-        const penaltyPoints = Number(player.penalty_points || 0)
-
-        // penaltyPointsは入力されたものを保持して別途合算（※入力通り）
-        return {
-          id: player.id,
-          playerId: player.player_id,
-          teamId: player.team_id,
-          score: Number(player.score),
-          points: Math.round(points * 10) / 10,
-          penaltyPoints: penaltyPoints,
-          rank: player.rank,
-        }
-      })
-
-      const submitData = playersWithPoints.sort((a, b) => a.rank - b.rank)
+      // ポイント・順位の自動計算（penaltyPoints は入力値をそのまま保持して別途合算）
+      const submitData = calculateGamePoints(
+        editData.map((player) => ({ ...player, score: Number(player.score) }))
+      ).map((player) => ({
+        id: player.id,
+        playerId: player.player_id,
+        teamId: player.team_id,
+        score: player.score,
+        points: player.points,
+        penaltyPoints: Number(player.penalty_points || 0),
+        rank: player.rank,
+      }))
 
       await gameResultApi.update(editingGameId, submitData)
       setEditingGameId(null)
@@ -130,11 +106,11 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
 
   const updateEditData = (id: string, field: string, value: any) => {
     if (!editData) return
-    const newData = editData.map(d => {
+    const newData = editData.map((d) => {
       if (d.id === id) {
         const updated = { ...d, [field]: value }
         if (field === "player_id") {
-          const player = registeredPlayers.find(p => p.id === value)
+          const player = registeredPlayers.find((p) => p.id === value)
           if (player) {
             updated.team_id = player.team_id
             updated.players = player
@@ -160,13 +136,13 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Trophy className="w-4 h-4 text-yellow-500" />
+        return <Trophy className="h-4 w-4 text-yellow-500" />
       case 2:
-        return <Medal className="w-4 h-4 text-gray-400" />
+        return <Medal className="h-4 w-4 text-gray-400" />
       case 3:
-        return <Star className="w-4 h-4 text-amber-600" />
+        return <Star className="h-4 w-4 text-amber-600" />
       case 4:
-        return <Award className="w-4 h-4 text-slate-400" />
+        return <Award className="h-4 w-4 text-slate-400" />
       default:
         return null
     }
@@ -186,19 +162,21 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
   }
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
-      <CardHeader className="pb-3 sm:pb-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-lg">
+    <Card className="border border-white/20 bg-white/80 shadow-xl backdrop-blur-sm">
+      <CardHeader className="rounded-t-lg bg-gradient-to-r from-amber-50 to-orange-50 pb-3 sm:pb-6">
         <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-          <div className="p-2 bg-gradient-to-r from-amber-500 to-orange-600 rounded-lg shadow-lg">
-            <History className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+          <div className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 p-2 shadow-lg">
+            <History className="h-4 w-4 text-white sm:h-5 sm:w-5" />
           </div>
           過去の成績
         </CardTitle>
-        <CardDescription className="text-xs sm:text-sm">ゲーム履歴の確認と削除・編集（最新の成績から表示）</CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
+          ゲーム履歴の確認と削除・編集（最新の成績から表示）
+        </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
         {gameResults.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm bg-slate-50 rounded-xl">
+          <div className="rounded-xl bg-slate-50 py-12 text-center text-sm text-muted-foreground">
             ゲーム履歴がありません
           </div>
         ) : (
@@ -206,18 +184,22 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
             {gameResults.map((game) => (
               <div
                 key={game.id}
-                className="border-2 rounded-xl p-4 bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-200"
+                className="rounded-xl border-2 bg-white/50 p-4 backdrop-blur-sm transition-all duration-200 hover:bg-white/70"
               >
                 {/* ゲーム情報ヘッダー */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center flex-wrap gap-2">
-                    <Calendar className="w-4 h-4 text-amber-600" />
+                <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Calendar className="h-4 w-4 text-amber-600" />
                     <span className="text-sm font-medium">
                       {format(new Date(game.game_date), "yyyy/MM/dd HH:mm", { locale: ja })}
                     </span>
                     {game.season_id && (
-                      <Badge variant="outline" className={`ml-1 text-[10px] sm:text-xs ${game.stage === 'FINAL' ? 'text-purple-700 border-purple-200 bg-purple-50' : 'text-blue-700 border-blue-200 bg-blue-50'}`}>
-                        {seasons.find(s => s.id === game.season_id)?.name || "シーズン"} {game.stage === 'FINAL' ? '(ファイナル)' : '(レギュラー)'}
+                      <Badge
+                        variant="outline"
+                        className={`ml-1 text-[10px] sm:text-xs ${game.stage === "FINAL" ? "border-purple-200 bg-purple-50 text-purple-700" : "border-blue-200 bg-blue-50 text-blue-700"}`}
+                      >
+                        {seasons.find((s) => s.id === game.season_id)?.name || "シーズン"}{" "}
+                        {game.stage === "FINAL" ? "(ファイナル)" : "(レギュラー)"}
                       </Badge>
                     )}
                   </div>
@@ -228,18 +210,18 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                           variant="outline"
                           size="sm"
                           onClick={saveEditing}
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 px-2 border-2 hover:border-green-300 transition-all duration-200"
+                          className="h-8 border-2 px-2 text-green-600 transition-all duration-200 hover:border-green-300 hover:bg-green-50 hover:text-green-700"
                         >
-                          <Save className="w-4 h-4 mr-1" />
+                          <Save className="mr-1 h-4 w-4" />
                           保存
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={cancelEditing}
-                          className="text-slate-600 hover:text-slate-700 hover:bg-slate-50 h-8 px-2 border-2 hover:border-slate-300 transition-all duration-200"
+                          className="h-8 border-2 px-2 text-slate-600 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
                         >
-                          <X className="w-4 h-4 mr-1" />
+                          <X className="mr-1 h-4 w-4" />
                           キャンセル
                         </Button>
                       </>
@@ -249,18 +231,18 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                           variant="outline"
                           size="sm"
                           onClick={() => startEditing(game as any)}
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 px-2 border-2 hover:border-blue-300 transition-all duration-200"
+                          className="h-8 border-2 px-2 text-blue-600 transition-all duration-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                         >
-                          <Edit2 className="w-4 h-4 mr-1" />
+                          <Edit2 className="mr-1 h-4 w-4" />
                           編集
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => deleteGameResult(game.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0 border-2 hover:border-red-300 transition-all duration-200"
+                          className="h-8 w-8 border-2 p-0 text-red-600 transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </>
                     )}
@@ -272,12 +254,12 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                   <Table>
                     <TableHeader className="bg-gradient-to-r from-slate-50 to-amber-50">
                       <TableRow>
-                        <TableHead className="w-12 text-xs p-2 font-semibold">順位</TableHead>
-                        <TableHead className="w-24 text-xs p-2 font-semibold">プレイヤー</TableHead>
-                        <TableHead className="w-20 text-xs p-2 font-semibold">チーム</TableHead>
-                        <TableHead className="text-right w-16 text-xs p-2 font-semibold">持ち点</TableHead>
-                        <TableHead className="text-right w-16 text-xs p-2 font-semibold">ポイント</TableHead>
-                        <TableHead className="text-right w-16 text-xs p-2 font-semibold">ペナルティ</TableHead>
+                        <TableHead className="w-12 p-2 text-xs font-semibold">順位</TableHead>
+                        <TableHead className="w-24 p-2 text-xs font-semibold">プレイヤー</TableHead>
+                        <TableHead className="w-20 p-2 text-xs font-semibold">チーム</TableHead>
+                        <TableHead className="w-16 p-2 text-right text-xs font-semibold">持ち点</TableHead>
+                        <TableHead className="w-16 p-2 text-right text-xs font-semibold">ポイント</TableHead>
+                        <TableHead className="w-16 p-2 text-right text-xs font-semibold">ペナルティ</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -290,9 +272,9 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                           return (
                             <TableRow
                               key={result.id}
-                              className="hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 transition-all duration-200"
+                              className="transition-all duration-200 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50"
                             >
-                              <TableCell className="font-medium text-xs p-2">
+                              <TableCell className="p-2 text-xs font-medium">
                                 <div className="flex items-center gap-1">
                                   {getRankIcon(result.rank)}
                                   <span className={result.rank === 1 ? "font-bold text-yellow-600" : ""}>
@@ -300,7 +282,7 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                                   </span>
                                 </div>
                               </TableCell>
-                              <TableCell className="font-medium text-xs p-2">
+                              <TableCell className="p-2 text-xs font-medium">
                                 {isEditing ? (
                                   <Select
                                     value={result.player_id}
@@ -318,16 +300,18 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                                     </SelectContent>
                                   </Select>
                                 ) : (
-                                  <span className="truncate block" title={result.players.name}>
+                                  <span className="block truncate" title={result.players.name}>
                                     {truncateName(result.players.name)}
                                   </span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-xs p-2">
+                              <TableCell className="p-2 text-xs">
                                 {isEditing ? (
                                   <Select
                                     value={result.team_id || "unassigned"}
-                                    onValueChange={(val) => updateEditData(result.id, "team_id", val === "unassigned" ? null : val)}
+                                    onValueChange={(val) =>
+                                      updateEditData(result.id, "team_id", val === "unassigned" ? null : val)
+                                    }
                                   >
                                     <SelectTrigger className="h-8 w-full min-w-[90px] text-xs">
                                       <SelectValue placeholder="チーム選択" />
@@ -338,39 +322,46 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                                           {t.name}
                                         </SelectItem>
                                       ))}
-                                      <SelectItem value="unassigned" className="text-xs">未所属</SelectItem>
+                                      <SelectItem value="unassigned" className="text-xs">
+                                        未所属
+                                      </SelectItem>
                                     </SelectContent>
                                   </Select>
                                 ) : (
-                                  <Badge className={`px-2 py-1 rounded-full text-[10px] border ${teamInfo.color}`}>
+                                  <Badge className={`rounded-full border px-2 py-1 text-[10px] ${teamInfo.color}`}>
                                     {truncateName(teamInfo.name, 4)}
                                   </Badge>
                                 )}
                               </TableCell>
-                              <TableCell className="text-right text-xs p-2 font-medium">
+                              <TableCell className="p-2 text-right text-xs font-medium">
                                 {isEditing ? (
                                   <Input
                                     type="number"
                                     placeholder="点数(百)"
                                     value={result.score / 100 || ""}
-                                    onChange={(e) => updateEditData(result.id, "score", (Number.parseInt(e.target.value) || 0) * 100)}
-                                    className="h-8 text-right w-full min-w-[80px] text-xs"
+                                    onChange={(e) =>
+                                      updateEditData(result.id, "score", (Number.parseInt(e.target.value) || 0) * 100)
+                                    }
+                                    className="h-8 w-full min-w-[80px] text-right text-xs"
                                   />
                                 ) : (
                                   result.score.toLocaleString()
                                 )}
                               </TableCell>
                               <TableCell
-                                className={`text-right font-bold text-xs p-2 ${result.points > 0 ? "text-green-600" : result.points < 0 ? "text-red-600" : ""
-                                  }`}
+                                className={`p-2 text-right text-xs font-bold ${
+                                  result.points > 0 ? "text-green-600" : result.points < 0 ? "text-red-600" : ""
+                                }`}
                               >
                                 {isEditing ? (
-                                  <span className="text-muted-foreground text-xs">{(Number(result.score) - 30000) / 1000 > 0 ? "+" : ""}自動計算</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {(Number(result.score) - 30000) / 1000 > 0 ? "+" : ""}自動計算
+                                  </span>
                                 ) : (
                                   formatPoints(result.points)
                                 )}
                               </TableCell>
-                              <TableCell className="text-right text-xs p-2 font-medium text-red-500">
+                              <TableCell className="p-2 text-right text-xs font-medium text-red-500">
                                 {isEditing ? (
                                   <Input
                                     type="number"
@@ -378,13 +369,15 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                                     max="0"
                                     value={result.penalty_points || 0}
                                     onChange={(e) => {
-                                      const val = Number.parseInt(e.target.value, 10) || 0;
-                                      updateEditData(result.id, "penalty_points", val > 0 ? -val : val);
+                                      const val = Number.parseInt(e.target.value, 10) || 0
+                                      updateEditData(result.id, "penalty_points", val > 0 ? -val : val)
                                     }}
-                                    className="h-8 text-right w-full min-w-[60px] text-xs text-red-500"
+                                    className="h-8 w-full min-w-[60px] text-right text-xs text-red-500"
                                   />
+                                ) : result.penalty_points ? (
+                                  formatPoints(result.penalty_points)
                                 ) : (
-                                  result.penalty_points ? formatPoints(result.penalty_points) : "-"
+                                  "-"
                                 )}
                               </TableCell>
                             </TableRow>
@@ -392,12 +385,14 @@ export default function GameHistory({ teams, registeredPlayers, gameResults, sea
                         })}
                     </TableBody>
                     {editingGameId === game.id && editData && (
-                      <TableFooter className="bg-slate-50 border-t">
+                      <TableFooter className="border-t bg-slate-50">
                         <TableRow>
-                          <TableCell colSpan={3} className="text-right font-medium text-xs p-2">
+                          <TableCell colSpan={3} className="p-2 text-right text-xs font-medium">
                             合計
                           </TableCell>
-                          <TableCell className={`text-right font-bold text-xs p-2 ${editData.reduce((sum, p) => sum + Number(p.score), 0) === 100000 ? "text-emerald-600" : "text-rose-500"}`}>
+                          <TableCell
+                            className={`p-2 text-right text-xs font-bold ${editData.reduce((sum, p) => sum + Number(p.score), 0) === 100000 ? "text-emerald-600" : "text-rose-500"}`}
+                          >
                             {(editData.reduce((sum, p) => sum + Number(p.score), 0) / 100).toLocaleString()}
                           </TableCell>
                           <TableCell colSpan={2} />

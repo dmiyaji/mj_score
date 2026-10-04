@@ -22,10 +22,10 @@ export default function PasswordDialog({
 }: PasswordDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-md bg-white/95 backdrop-blur-sm border border-white/20">
+      <DialogContent className="w-[90vw] max-w-md border border-white/20 bg-white/95 backdrop-blur-sm">
         <DialogHeader>
-          <DialogTitle className="text-lg flex items-center gap-2">
-            <Lock className="w-5 h-5 text-blue-600" />
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <Lock className="h-5 w-5 text-blue-600" />
             管理画面へのアクセス
           </DialogTitle>
           <DialogDescription className="text-sm">管理画面にアクセスするにはパスワードが必要です</DialogDescription>
@@ -42,20 +42,20 @@ export default function PasswordDialog({
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && onSubmit()}
-              className="text-sm border-2 focus:border-blue-500 transition-colors duration-200"
+              className="border-2 text-sm transition-colors duration-200 focus:border-blue-500"
             />
           </div>
           <div className="flex gap-2">
             <Button
               onClick={onSubmit}
-              className="flex-1 text-sm bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+              className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-sm transition-all duration-200 hover:from-blue-600 hover:to-purple-700"
             >
               認証
             </Button>
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="text-sm border-2 hover:bg-slate-50 transition-colors duration-200"
+              className="border-2 text-sm transition-colors duration-200 hover:bg-slate-50"
             >
               キャンセル
             </Button>
