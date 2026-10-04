@@ -27,6 +27,7 @@ import {
   ChevronRight,
   Lock,
   CalendarRange,
+  LogOut,
 } from "lucide-react"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
@@ -43,6 +44,8 @@ interface HeaderProps {
   isPublicRankingDialogOpen: boolean
   setIsPublicRankingDialogOpen: (open: boolean) => void
   onGeneratePublicRanking: () => void
+  isAuthenticated: boolean
+  onLogout: () => void
 }
 
 export default function Header({
@@ -57,6 +60,8 @@ export default function Header({
   isPublicRankingDialogOpen,
   setIsPublicRankingDialogOpen,
   onGeneratePublicRanking,
+  isAuthenticated,
+  onLogout,
 }: HeaderProps) {
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false)
 
@@ -328,7 +333,22 @@ export default function Header({
 
           {/* フッター */}
           <div className="mt-4 border-t border-gray-200 pt-3">
-            <p className="text-center text-[10px] text-gray-400">パスワード認証が必要です</p>
+            {isAuthenticated ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  onLogout()
+                  setIsAdminMenuOpen(false)
+                }}
+                className="h-8 w-full text-xs text-gray-500 hover:bg-red-50 hover:text-red-600"
+              >
+                <LogOut className="mr-1 h-3 w-3" />
+                ログアウト
+              </Button>
+            ) : (
+              <p className="text-center text-[10px] text-gray-400">パスワード認証が必要です</p>
+            )}
           </div>
         </div>
       </div>

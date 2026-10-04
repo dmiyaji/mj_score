@@ -14,7 +14,10 @@
 ```bash
 npm install             # lefthook の Git フックも自動でインストールされる
 npm run db:reset:local   # ローカル D1 を作り直す（マイグレーション適用 + 開発用シード投入）
+cp .dev.vars.example .dev.vars   # ローカル用 Secret（管理者パスワード: dev-password）
 ```
+
+`.dev.vars` は `npm run dev` / `npm run preview` の両方で読み込まれる。コミット対象外。
 
 ## テスト・静的チェック
 

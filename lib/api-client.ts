@@ -21,6 +21,24 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   return response.json()
 }
 
+// Auth operations
+export const authApi = {
+  async me(): Promise<{ authenticated: boolean }> {
+    return apiRequest<{ authenticated: boolean }>("/auth/me")
+  },
+
+  async login(password: string): Promise<{ authenticated: boolean }> {
+    return apiRequest<{ authenticated: boolean }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    })
+  },
+
+  async logout(): Promise<{ authenticated: boolean }> {
+    return apiRequest<{ authenticated: boolean }>("/auth/logout", { method: "POST" })
+  },
+}
+
 // Team operations
 export const teamApi = {
   async getAll(): Promise<Team[]> {

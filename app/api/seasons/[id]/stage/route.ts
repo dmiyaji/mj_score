@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth"
 import { seasonOperations } from "@/lib/database"
 import { getDb } from "@/lib/get-db"
 
 // PUT /api/seasons/[id]/stage - Set active stage for a season
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const { stage } = (await request.json()) as { stage: "REGULAR" | "FINAL" }

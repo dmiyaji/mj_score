@@ -1,39 +1,61 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { authApi } from "@/lib/api-client"
 
-const ADMIN_PASSWORD = "nine"
+const ADMIN_VIEWS = ["playerManagement", "teamManagement", "gameHistory", "dataManagement", "seasonManagement"]
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [passwordInput, setPasswordInput] = useState("")
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [pendingView, setPendingView] = useState("")
   const { toast } = useToast()
 
-  const requiresAuth = (view: string) => {
-    return ["playerManagement", "teamManagement", "gameHistory", "dataManagement"].includes(view)
-  }
+  // ログイン状態はサーバーの Cookie で管理しているため、起動時に確認する
+  useEffect(() => {
+    authApi
+      .me()
+      .then(({ authenticated }) => setIsAuthenticated(authenticated))
+      .catch(() => setIsAuthenticated(false))
+  }, [])
 
-  const handlePasswordSubmit = () => {
-    if (passwordInput === ADMIN_PASSWORD) {
+  const requiresAuth = (view: string) => ADMIN_VIEWS.includes(view)
+
+  /** ログインに成功したら、開こうとしていた画面を返す */
+  const handlePasswordSubmit = async (): Promise<string | null> => {
+    if (isSubmitting) return null
+    setIsSubmitting(true)
+    try {
+      await authApi.login(passwordInput)
       setIsAuthenticated(true)
       setIsPasswordDialogOpen(false)
-      setPasswordInput("")
       toast({
         title: "認証成功",
         description: "管理画面にアクセスできます",
       })
       return pendingView
-    } else {
+    } catch (error) {
       toast({
         title: "認証失敗",
-        description: "パスワードが正しくありません",
+        description: error instanceof Error ? error.message : "パスワードが正しくありません",
         variant: "destructive",
       })
-      setPasswordInput("")
       return null
+    } finally {
+      setPasswordInput("")
+      setIsSubmitting(false)
+    }
+  }
+
+  const logout = async () => {
+    try {
+      await authApi.logout()
+    } finally {
+      setIsAuthenticated(false)
+      toast({ title: "ログアウトしました" })
     }
   }
 
@@ -52,8 +74,10 @@ export function useAuth() {
     setPasswordInput,
     isPasswordDialogOpen,
     setIsPasswordDialogOpen,
+    isSubmitting,
     handlePasswordSubmit,
     handleTabChange,
     requiresAuth,
+    logout,
   }
 }

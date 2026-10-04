@@ -8,11 +8,13 @@
 - `lib/database.ts`: D1 へのクエリ（テーブル単位の operations）
 - `lib/scoring.ts`: 順位・ポイント計算（ルール変更時はここと `tests/unit/scoring.test.ts` を更新）
 - `lib/types.ts`: 型定義
+- `lib/auth.ts` / `lib/password.ts`: 管理者認証（PBKDF2 + 署名付きセッション Cookie）
 - `components/mahjong/`: 画面コンポーネント / `components/ui/`: shadcn/ui の生成コード（直接編集しない）
 - `migrations/`: D1 マイグレーション / `seeds/dev_seed.sql`: ローカル用ダミーデータ
 
 ## ルール
 
+- 書き込み系 API（成績入力 `POST /api/game-results` を除く）とエクスポート・インポートは、ハンドラ先頭で `requireAdmin()` を呼んで管理者のみに制限する。新しい API を追加するときも同様
 - 応答・コミットメッセージ・PR 説明は日本語で書く
 - スキーマ変更は `migrations/` に連番の新規ファイルを追加する。既存のマイグレーションは変更しない。後方互換な形（カラム追加等）で書く
 - `wrangler.jsonc` や `.dev.vars.example` を変更したら `npm run types:cf` で `cloudflare-env.d.ts` を再生成する

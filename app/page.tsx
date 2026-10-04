@@ -23,8 +23,11 @@ export default function MahjongScoreManager() {
     setPasswordInput,
     isPasswordDialogOpen,
     setIsPasswordDialogOpen,
+    isSubmitting,
     handlePasswordSubmit,
     handleTabChange,
+    requiresAuth,
+    logout,
   } = useAuth()
 
   const [currentView, setCurrentView] = useState<
@@ -53,10 +56,18 @@ export default function MahjongScoreManager() {
   }
 
   // パスワード認証処理
-  const onPasswordSubmit = () => {
-    const newView = handlePasswordSubmit()
+  const onPasswordSubmit = async () => {
+    const newView = await handlePasswordSubmit()
     if (newView) {
       setCurrentView(newView as any)
+    }
+  }
+
+  // ログアウト（管理画面を開いていたら成績入力に戻す）
+  const onLogout = async () => {
+    await logout()
+    if (requiresAuth(currentView)) {
+      setCurrentView("input")
     }
   }
 
@@ -118,6 +129,8 @@ export default function MahjongScoreManager() {
           isPublicRankingDialogOpen={isPublicRankingDialogOpen}
           setIsPublicRankingDialogOpen={setIsPublicRankingDialogOpen}
           onGeneratePublicRanking={generatePublicRanking}
+          isAuthenticated={isAuthenticated}
+          onLogout={onLogout}
         />
 
         <PasswordDialog
@@ -126,6 +139,7 @@ export default function MahjongScoreManager() {
           passwordInput={passwordInput}
           setPasswordInput={setPasswordInput}
           onSubmit={onPasswordSubmit}
+          isSubmitting={isSubmitting}
         />
 
         {/* メインコンテンツ */}

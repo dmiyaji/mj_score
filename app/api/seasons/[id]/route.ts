@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth"
 import { seasonOperations } from "@/lib/database"
 import { getDb } from "@/lib/get-db"
 
 // DELETE /api/seasons/[id] - Delete a season
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const db = await getDb()
