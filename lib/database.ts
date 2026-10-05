@@ -7,6 +7,7 @@ import {
   type TeamStats,
   type Season,
 } from "./types"
+import type { ImportRows, ImportTable, RestoreData } from "./admin-input"
 
 // シーズン関連の操作
 export const seasonOperations = {
@@ -37,22 +38,35 @@ export const seasonOperations = {
     return { id, name, is_active, current_stage: "REGULAR", created_at: now, updated_at: now }
   },
 
-  async setActive(db: D1Database, id: string): Promise<void> {
+  // 存在しないシーズンを指定すると全シーズンが非アクティブになるため、先に存在を確認する
+  async setActive(db: D1Database, id: string): Promise<boolean> {
+    const exists = await db.prepare("SELECT 1 FROM seasons WHERE id = ?").bind(id).first()
+    if (!exists) return false
     const now = new Date().toISOString().slice(0, 19).replace("T", " ")
     // D1 allows batching statements for atomicity
     await db.batch([
       db.prepare("UPDATE seasons SET is_active = FALSE, updated_at = ?").bind(now),
       db.prepare("UPDATE seasons SET is_active = TRUE, updated_at = ? WHERE id = ?").bind(now, id),
     ])
+    return true
   },
 
-  async setStage(db: D1Database, id: string, stage: "REGULAR" | "FINAL"): Promise<void> {
+  async setStage(db: D1Database, id: string, stage: "REGULAR" | "FINAL"): Promise<boolean> {
     const now = new Date().toISOString().slice(0, 19).replace("T", " ")
-    await db.prepare("UPDATE seasons SET current_stage = ?, updated_at = ? WHERE id = ?").bind(stage, now, id).run()
+    const { meta } = await db
+      .prepare("UPDATE seasons SET current_stage = ?, updated_at = ? WHERE id = ?")
+      .bind(stage, now, id)
+      .run()
+    return meta.changes > 0
   },
 
-  async delete(db: D1Database, id: string): Promise<void> {
-    await db.prepare("DELETE FROM seasons WHERE id = ?").bind(id).run()
+  async getById(db: D1Database, id: string): Promise<Season | null> {
+    return db.prepare("SELECT * FROM seasons WHERE id = ?").bind(id).first<Season>()
+  },
+
+  async delete(db: D1Database, id: string): Promise<boolean> {
+    const { meta } = await db.prepare("DELETE FROM seasons WHERE id = ?").bind(id).run()
+    return meta.changes > 0
   },
 }
 
@@ -87,7 +101,7 @@ export const teamOperations = {
   },
 
   // チーム更新
-  async update(db: D1Database, id: string, updates: Partial<Pick<Team, "name" | "color">>): Promise<Team> {
+  async update(db: D1Database, id: string, updates: Partial<Pick<Team, "name" | "color">>): Promise<Team | null> {
     const now = new Date().toISOString().slice(0, 19).replace("T", " ")
     const fields = []
     const values = []
@@ -109,13 +123,17 @@ export const teamOperations = {
       .bind(...values)
       .run()
 
-    const { results } = await db.prepare("SELECT * FROM teams WHERE id = ?").bind(id).all()
-    return results[0] as unknown as Team
+    return db.prepare("SELECT * FROM teams WHERE id = ?").bind(id).first<Team>()
+  },
+
+  async exists(db: D1Database, id: string): Promise<boolean> {
+    return (await db.prepare("SELECT 1 FROM teams WHERE id = ?").bind(id).first()) !== null
   },
 
   // チーム削除
-  async delete(db: D1Database, id: string): Promise<void> {
-    await db.prepare("DELETE FROM teams WHERE id = ?").bind(id).run()
+  async delete(db: D1Database, id: string): Promise<boolean> {
+    const { meta } = await db.prepare("DELETE FROM teams WHERE id = ?").bind(id).run()
+    return meta.changes > 0
   },
 }
 
@@ -174,7 +192,7 @@ export const playerOperations = {
   },
 
   // プレイヤー更新
-  async update(db: D1Database, id: string, updates: Partial<Pick<Player, "name" | "team_id">>): Promise<Player> {
+  async update(db: D1Database, id: string, updates: Partial<Pick<Player, "name" | "team_id">>): Promise<Player | null> {
     const now = new Date().toISOString().slice(0, 19).replace("T", " ")
     const fields = []
     const values = []
@@ -196,13 +214,13 @@ export const playerOperations = {
       .bind(...values)
       .run()
 
-    const { results } = await db.prepare("SELECT * FROM players WHERE id = ?").bind(id).all()
-    return results[0] as unknown as Player
+    return db.prepare("SELECT * FROM players WHERE id = ?").bind(id).first<Player>()
   },
 
   // プレイヤー削除
-  async delete(db: D1Database, id: string): Promise<void> {
-    await db.prepare("DELETE FROM players WHERE id = ?").bind(id).run()
+  async delete(db: D1Database, id: string): Promise<boolean> {
+    const { meta } = await db.prepare("DELETE FROM players WHERE id = ?").bind(id).run()
+    return meta.changes > 0
   },
 }
 
@@ -870,118 +888,6 @@ export const exportOperations = {
 
 // データインポート関連の操作
 export const importOperations = {
-  // チームデータをインポート
-  async importTeams(db: D1Database, teams: Array<{ name: string; color: string }>) {
-    try {
-      const results = []
-      for (const team of teams) {
-        if (!team.name || !team.color) {
-          throw new Error("チーム名とカラーは必須です")
-        }
-
-        // 重複チェック
-        const existingTeams = await teamOperations.getAll(db)
-        if (existingTeams.some((t) => t.name === team.name)) {
-          throw new Error(`チーム「${team.name}」は既に存在します`)
-        }
-
-        const result = await teamOperations.create(db, team.name, team.color)
-        results.push(result)
-      }
-      return results
-    } catch (error) {
-      throw error
-    }
-  },
-
-  // プレイヤーデータをインポート
-  async importPlayers(db: D1Database, players: Array<{ name: string; team_name?: string }>) {
-    try {
-      const teams = await teamOperations.getAll(db)
-      const existingPlayers = await playerOperations.getAll(db)
-      const results = []
-
-      // 未所属チームを取得（デフォルトチーム）
-      const defaultTeam = teams.find((t) => t.name === "未所属") || teams[0]
-
-      for (const player of players) {
-        if (!player.name) {
-          throw new Error("プレイヤー名は必須です")
-        }
-
-        // 重複チェック
-        if (existingPlayers.some((p) => p.name === player.name)) {
-          throw new Error(`プレイヤー「${player.name}」は既に存在します`)
-        }
-
-        // チーム名が指定されている場合はそのチームを使用、なければデフォルトチーム
-        let teamId = defaultTeam.id
-        if (player.team_name) {
-          const team = teams.find((t) => t.name === player.team_name)
-          if (!team) {
-            throw new Error(`チーム「${player.team_name}」が見つかりません`)
-          }
-          teamId = team.id
-        }
-
-        const result = await playerOperations.create(db, player.name, teamId)
-        results.push(result)
-      }
-      return results
-    } catch (error) {
-      throw error
-    }
-  },
-
-  // ゲーム結果データをインポート
-  async importGameResults(
-    db: D1Database,
-    gameResults: Array<{
-      game_date: string
-      players: Array<{
-        player_name: string
-        team_id: string
-        score: number
-        points: number
-        penalty_points?: number
-        rank: number
-      }>
-    }>
-  ) {
-    try {
-      const players = await playerOperations.getAll(db)
-      const results = []
-
-      for (const game of gameResults) {
-        if (!game.game_date || !game.players || game.players.length !== 4) {
-          throw new Error("ゲーム日時と4人のプレイヤーデータが必要です")
-        }
-
-        // プレイヤー名からIDを取得
-        const playerResults = game.players.map((playerData) => {
-          const player = players.find((p) => p.name === playerData.player_name)
-          if (!player) {
-            throw new Error(`プレイヤー「${playerData.player_name}」が見つかりません`)
-          }
-          return {
-            playerId: player.id,
-            teamId: playerData.team_id || player.team_id || "",
-            score: playerData.score,
-            points: playerData.points,
-            penaltyPoints: playerData.penalty_points || 0,
-            rank: playerData.rank,
-          }
-        })
-
-        const result = await gameResultOperations.create(db, game.game_date, playerResults)
-        results.push(result)
-      }
-      return results
-    } catch (error) {
-      throw error
-    }
-  },
-
   // CSVからデータを解析
   parseCSV(csvText: string, tableName: "teams" | "players" | "gameResults" | "seasons") {
     const lines = csvText.trim().split("\n")
@@ -1027,6 +933,7 @@ export const importOperations = {
           id: row.id,
           name: row.name,
           is_active: row.is_active === "1" || row.is_active === "true" || row.is_active === 1,
+          current_stage: row.current_stage,
           created_at: row.created_at,
           updated_at: row.updated_at,
         }))
@@ -1068,15 +975,9 @@ export const importOperations = {
   },
 
   // データベースの完全復元（全削除して再投入）
-  async restoreFullDatabase(
-    db: D1Database,
-    data: {
-      teams: any[]
-      players: any[]
-      gameResults: any[]
-      seasons: any[]
-    }
-  ) {
+  // data は restoreDataSchema で検証済みであること（4 テーブルが揃っていない場合は呼び出し前に拒否する）
+  async restoreFullDatabase(db: D1Database, data: RestoreData) {
+    const now = new Date().toISOString().slice(0, 19).replace("T", " ")
     const batch = []
 
     // 削除処理（外部キー制約のあるものから順に）
@@ -1086,171 +987,118 @@ export const importOperations = {
     batch.push(db.prepare("DELETE FROM teams"))
     batch.push(db.prepare("DELETE FROM seasons"))
 
-    // seasons
-    if (data.seasons) {
-      for (const item of data.seasons) {
-        batch.push(
-          db
-            .prepare("INSERT INTO seasons (id, name, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
-            .bind(item.id, item.name, item.is_active ? 1 : 0, item.created_at, item.updated_at)
-        )
-      }
+    for (const item of data.seasons) {
+      batch.push(
+        db
+          .prepare(
+            "INSERT INTO seasons (id, name, is_active, current_stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+          )
+          .bind(
+            item.id,
+            item.name,
+            item.is_active ? 1 : 0,
+            item.current_stage,
+            item.created_at ?? now,
+            item.updated_at ?? now
+          )
+      )
     }
 
-    // teams
-    if (data.teams) {
-      for (const item of data.teams) {
-        batch.push(
-          db
-            .prepare("INSERT INTO teams (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
-            .bind(item.id, item.name, item.color, item.created_at, item.updated_at)
-        )
-      }
+    for (const item of data.teams) {
+      batch.push(
+        db
+          .prepare("INSERT INTO teams (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+          .bind(item.id, item.name, item.color, item.created_at ?? now, item.updated_at ?? now)
+      )
     }
 
-    // players
-    if (data.players) {
-      for (const item of data.players) {
-        batch.push(
-          db
-            .prepare("INSERT INTO players (id, name, team_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
-            .bind(item.id, item.name, item.team_id, item.created_at, item.updated_at)
-        )
-      }
+    for (const item of data.players) {
+      batch.push(
+        db
+          .prepare("INSERT INTO players (id, name, team_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+          .bind(item.id, item.name, item.team_id, item.created_at ?? now, item.updated_at ?? now)
+      )
     }
 
-    // game_results & player_game_results
-    if (data.gameResults) {
-      for (const item of data.gameResults) {
-        batch.push(
-          db
-            .prepare(
-              "INSERT INTO game_results (id, game_date, season_id, stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-            )
-            .bind(item.id, item.game_date, item.season_id, item.stage, item.created_at, item.updated_at)
-        )
-
-        if (item.player_game_results) {
-          for (const pgr of item.player_game_results) {
-            const pgrId = pgr.id || crypto.randomUUID()
-            batch.push(
-              db
-                .prepare(
-                  "INSERT INTO player_game_results (id, game_result_id, player_id, team_id, score, points, penalty_points, rank, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                )
-                .bind(
-                  pgrId,
-                  pgr.game_result_id,
-                  pgr.player_id,
-                  pgr.team_id,
-                  pgr.score,
-                  pgr.points,
-                  pgr.penalty_points,
-                  pgr.rank,
-                  pgr.created_at
-                )
-            )
-          }
-        }
-      }
+    for (const item of data.gameResults) {
+      batch.push(...gameResultInsertStatements(db, item, now))
     }
 
-    // バッチ実行
+    // バッチ実行（D1 の batch はトランザクションとして実行され、途中で失敗すると全体がロールバックされる）
     await db.batch(batch)
     return { success: true, count: batch.length }
   },
 
   // テーブル個別の追加・更新（Upsert）
-  async upsertTable(db: D1Database, tableName: string, data: any[]) {
-    const batch = []
+  async upsertTable<T extends ImportTable>(db: D1Database, tableName: T, data: ImportRows[T]) {
+    const batch: D1PreparedStatement[] = []
     const now = new Date().toISOString().slice(0, 19).replace("T", " ")
 
-    for (const item of data) {
-      if (tableName === "teams") {
-        const id = item.id || crypto.randomUUID()
+    if (tableName === "teams") {
+      for (const item of data as ImportRows["teams"]) {
         batch.push(
           db
             .prepare(
-              `
-          INSERT INTO teams (id, name, color, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name,
-            color = excluded.color,
-            updated_at = excluded.updated_at
-        `
+              `INSERT INTO teams (id, name, color, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                 name = excluded.name,
+                 color = excluded.color,
+                 updated_at = excluded.updated_at`
             )
-            .bind(id, item.name, item.color, item.created_at || now, item.updated_at || now)
+            .bind(item.id ?? crypto.randomUUID(), item.name, item.color, item.created_at ?? now, item.updated_at ?? now)
         )
-      } else if (tableName === "players") {
-        const id = item.id || crypto.randomUUID()
+      }
+    } else if (tableName === "players") {
+      for (const item of data as ImportRows["players"]) {
         batch.push(
           db
             .prepare(
-              `
-          INSERT INTO players (id, name, team_id, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name,
-            team_id = excluded.team_id,
-            updated_at = excluded.updated_at
-        `
+              `INSERT INTO players (id, name, team_id, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                 name = excluded.name,
+                 team_id = excluded.team_id,
+                 updated_at = excluded.updated_at`
             )
-            .bind(id, item.name, item.team_id, item.created_at || now, item.updated_at || now)
+            .bind(
+              item.id ?? crypto.randomUUID(),
+              item.name,
+              item.team_id,
+              item.created_at ?? now,
+              item.updated_at ?? now
+            )
         )
-      } else if (tableName === "seasons") {
-        const id = item.id || crypto.randomUUID()
+      }
+    } else if (tableName === "seasons") {
+      for (const item of data as ImportRows["seasons"]) {
         batch.push(
           db
             .prepare(
-              `
-          INSERT INTO seasons (id, name, is_active, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name,
-            is_active = excluded.is_active,
-            updated_at = excluded.updated_at
-        `
+              `INSERT INTO seasons (id, name, is_active, current_stage, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                 name = excluded.name,
+                 is_active = excluded.is_active,
+                 current_stage = excluded.current_stage,
+                 updated_at = excluded.updated_at`
             )
-            .bind(id, item.name, item.is_active ? 1 : 0, item.created_at || now, item.updated_at || now)
+            .bind(
+              item.id ?? crypto.randomUUID(),
+              item.name,
+              item.is_active ? 1 : 0,
+              item.current_stage,
+              item.created_at ?? now,
+              item.updated_at ?? now
+            )
         )
-      } else if (tableName === "gameResults") {
-        // ゲーム結果の個別のUpsert（簡易版：IDが一致すれば既存を削除して再登録）
-        if (item.id) {
-          batch.push(db.prepare("DELETE FROM player_game_results WHERE game_result_id = ?").bind(item.id))
-          batch.push(db.prepare("DELETE FROM game_results WHERE id = ?").bind(item.id))
-
-          batch.push(
-            db
-              .prepare(
-                "INSERT INTO game_results (id, game_date, season_id, stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-              )
-              .bind(item.id, item.game_date, item.season_id, item.stage, item.created_at || now, item.updated_at || now)
-          )
-
-          if (item.player_game_results) {
-            for (const pgr of item.player_game_results) {
-              const pgrId = pgr.id || crypto.randomUUID()
-              batch.push(
-                db
-                  .prepare(
-                    "INSERT INTO player_game_results (id, game_result_id, player_id, team_id, score, points, penalty_points, rank, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                  )
-                  .bind(
-                    pgrId,
-                    item.id,
-                    pgr.player_id,
-                    pgr.team_id,
-                    pgr.score,
-                    pgr.points,
-                    pgr.penalty_points,
-                    pgr.rank,
-                    pgr.created_at || now
-                  )
-              )
-            }
-          }
-        }
+      }
+    } else if (tableName === "gameResults") {
+      // ID が一致する対局は既存を削除して再登録する
+      for (const item of data as ImportRows["gameResults"]) {
+        batch.push(db.prepare("DELETE FROM player_game_results WHERE game_result_id = ?").bind(item.id))
+        batch.push(db.prepare("DELETE FROM game_results WHERE id = ?").bind(item.id))
+        batch.push(...gameResultInsertStatements(db, item, now))
       }
     }
 
@@ -1259,4 +1107,42 @@ export const importOperations = {
     }
     return { success: true, count: data.length }
   },
+}
+
+function gameResultInsertStatements(
+  db: D1Database,
+  item: ImportRows["gameResults"][number],
+  now: string
+): D1PreparedStatement[] {
+  return [
+    db
+      .prepare(
+        "INSERT INTO game_results (id, game_date, season_id, stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+      )
+      .bind(
+        item.id,
+        item.game_date,
+        item.season_id,
+        item.stage ?? null,
+        item.created_at ?? now,
+        item.updated_at ?? now
+      ),
+    ...item.player_game_results.map((pgr) =>
+      db
+        .prepare(
+          "INSERT INTO player_game_results (id, game_result_id, player_id, team_id, score, points, penalty_points, rank, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(
+          pgr.id ?? crypto.randomUUID(),
+          item.id,
+          pgr.player_id,
+          pgr.team_id,
+          pgr.score,
+          pgr.points,
+          pgr.penalty_points,
+          pgr.rank,
+          pgr.created_at ?? now
+        )
+    ),
+  ]
 }

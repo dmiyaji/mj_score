@@ -88,11 +88,6 @@ export const updateGameResultSchema = z.object(
 export type CreateGameResultInput = z.infer<typeof createGameResultSchema>
 export type UpdateGameResultInput = z.infer<typeof updateGameResultSchema>
 
-/** zod のエラーを API のエラーメッセージ（先頭 1 件）に変換する */
-export function firstIssueMessage(error: z.ZodError): string {
-  return error.issues[0]?.message ?? "入力内容に不備があります"
-}
-
 /**
  * 新規入力の成績を組み立てる。
  * 所属チームはクライアントの値ではなく、登録済みプレイヤーの現在の所属から決める。

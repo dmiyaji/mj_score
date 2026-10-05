@@ -39,7 +39,7 @@ export default function SeasonManagement({ seasons, onDataUpdate }: SeasonManage
     } catch (error) {
       toast({
         title: "エラー",
-        description: "シーズンの作成に失敗しました",
+        description: error instanceof Error ? error.message : "シーズンの作成に失敗しました",
         variant: "destructive",
       })
     } finally {
@@ -58,7 +58,7 @@ export default function SeasonManagement({ seasons, onDataUpdate }: SeasonManage
     } catch (error) {
       toast({
         title: "エラー",
-        description: "アクティブシーズンの切り替えに失敗しました",
+        description: error instanceof Error ? error.message : "アクティブシーズンの切り替えに失敗しました",
         variant: "destructive",
       })
     }
@@ -75,7 +75,7 @@ export default function SeasonManagement({ seasons, onDataUpdate }: SeasonManage
     } catch (error) {
       toast({
         title: "エラー",
-        description: "ステージの切り替えに失敗しました",
+        description: error instanceof Error ? error.message : "ステージの切り替えに失敗しました",
         variant: "destructive",
       })
     }
@@ -101,7 +101,7 @@ export default function SeasonManagement({ seasons, onDataUpdate }: SeasonManage
     } catch (error) {
       toast({
         title: "エラー",
-        description: "シーズンの削除に失敗しました",
+        description: error instanceof Error ? error.message : "シーズンの削除に失敗しました",
         variant: "destructive",
       })
     } finally {

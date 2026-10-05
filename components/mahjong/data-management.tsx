@@ -72,7 +72,7 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
     } catch (error) {
       toast({
         title: "エラー",
-        description: "データのエクスポートに失敗しました",
+        description: error instanceof Error ? error.message : "データのエクスポートに失敗しました",
         variant: "destructive",
       })
     } finally {

@@ -11,6 +11,19 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const { id } = await params
     const db = await getDb()
+
+    const season = await seasonOperations.getById(db, id)
+    if (!season) {
+      return NextResponse.json({ error: "シーズンが見つかりません" }, { status: 404 })
+    }
+    // アクティブなシーズンを消すと成績入力ができなくなるため、先に別のシーズンを有効にしてもらう
+    if (season.is_active) {
+      return NextResponse.json(
+        { error: "アクティブなシーズンは削除できません。先に別のシーズンをアクティブにしてください" },
+        { status: 400 }
+      )
+    }
+
     await seasonOperations.delete(db, id)
     return NextResponse.json({ success: true })
   } catch (error) {

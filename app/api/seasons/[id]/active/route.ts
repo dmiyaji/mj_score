@@ -11,7 +11,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params
     const db = await getDb()
-    await seasonOperations.setActive(db, id)
+    if (!(await seasonOperations.setActive(db, id))) {
+      return NextResponse.json({ error: "シーズンが見つかりません" }, { status: 404 })
+    }
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error setting active season:", error)
