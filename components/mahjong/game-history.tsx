@@ -44,7 +44,7 @@ export default function GameHistory({
     } catch (error) {
       toast({
         title: "エラー",
-        description: "ゲーム結果の削除に失敗しました",
+        description: error instanceof Error ? error.message : "ゲーム結果の削除に失敗しました",
         variant: "destructive",
       })
     }
@@ -98,7 +98,7 @@ export default function GameHistory({
     } catch (error) {
       toast({
         title: "エラー",
-        description: "ゲーム結果の更新に失敗しました",
+        description: error instanceof Error ? error.message : "ゲーム結果の更新に失敗しました",
         variant: "destructive",
       })
     }

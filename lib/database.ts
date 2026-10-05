@@ -121,6 +121,17 @@ export const teamOperations = {
 
 // プレイヤー関連の操作
 export const playerOperations = {
+  // 指定したプレイヤーの現在の所属チーム（存在しないプレイヤーは含まれない）
+  async getTeamIdMap(db: D1Database, playerIds: string[]): Promise<Map<string, string | null>> {
+    if (playerIds.length === 0) return new Map()
+    const placeholders = playerIds.map(() => "?").join(", ")
+    const { results } = await db
+      .prepare(`SELECT id, team_id FROM players WHERE id IN (${placeholders})`)
+      .bind(...playerIds)
+      .all<{ id: string; team_id: string | null }>()
+    return new Map(results.map((r) => [r.id, r.team_id]))
+  },
+
   // 全プレイヤー取得（チーム情報含む）
   async getAll(db: D1Database): Promise<Player[]> {
     const { results } = await db
@@ -330,6 +341,15 @@ export const gameResultOperations = {
     }
   },
 
+  // 対局に紐づくプレイヤー別成績の ID 一覧
+  async getPlayerResultIds(db: D1Database, gameId: string): Promise<string[]> {
+    const { results } = await db
+      .prepare("SELECT id FROM player_game_results WHERE game_result_id = ?")
+      .bind(gameId)
+      .all<{ id: string }>()
+    return results.map((r) => r.id)
+  },
+
   // ゲーム結果削除
   async delete(db: D1Database, id: string): Promise<void> {
     await db.batch([
@@ -345,7 +365,7 @@ export const gameResultOperations = {
     playerResults: Array<{
       id: string
       playerId: string
-      teamId: string
+      teamId: string | null
       points: number
       score: number
       penaltyPoints?: number
