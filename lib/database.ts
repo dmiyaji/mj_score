@@ -539,13 +539,14 @@ export const statsOperations = {
     }
 
     if (dateFrom) {
-      whereConditions.push("gr.game_date >= ?")
-      queryParams.push(dateFrom.toISOString().split("T")[0] + " 00:00:00")
+      // game_date は日付のみ（成績入力）の場合と日時の場合があるため、日付に揃えて比較する（開始日・終了日とも含む）
+      whereConditions.push("date(gr.game_date) >= ?")
+      queryParams.push(dateFrom.toISOString().split("T")[0])
     }
 
     if (dateTo) {
-      whereConditions.push("gr.game_date <= ?")
-      queryParams.push(dateTo.toISOString().split("T")[0] + " 23:59:59")
+      whereConditions.push("date(gr.game_date) <= ?")
+      queryParams.push(dateTo.toISOString().split("T")[0])
     }
 
     if (seasonId) {
@@ -675,13 +676,14 @@ export const statsOperations = {
     const queryParams: SqlParam[] = []
 
     if (dateFrom) {
-      whereConditions.push("gr.game_date >= ?")
-      queryParams.push(dateFrom.toISOString().split("T")[0] + " 00:00:00")
+      // game_date は日付のみ（成績入力）の場合と日時の場合があるため、日付に揃えて比較する（開始日・終了日とも含む）
+      whereConditions.push("date(gr.game_date) >= ?")
+      queryParams.push(dateFrom.toISOString().split("T")[0])
     }
 
     if (dateTo) {
-      whereConditions.push("gr.game_date <= ?")
-      queryParams.push(dateTo.toISOString().split("T")[0] + " 23:59:59")
+      whereConditions.push("date(gr.game_date) <= ?")
+      queryParams.push(dateTo.toISOString().split("T")[0])
     }
 
     if (seasonId) {
