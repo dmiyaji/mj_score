@@ -65,7 +65,46 @@ git push origin v1.2.0
 
 マイグレーションは旧コードでも動く後方互換な形（カラム追加等）で書く。削除・リネームは 2 リリースに分ける。
 
-## 4. 初期設定（済んでいれば不要）
+## 4. 依存パッケージの更新（Dependabot）
+
+[.github/dependabot.yml](../.github/dependabot.yml) の設定で、更新の PR が自動で作成される。通常の PR と同じく CI が実行される。
+
+| 対象           | 頻度                      | PR のまとめ方                                                                                                |
+| -------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| npm パッケージ | 毎週月曜 9:00（日本時間） | `next`（+ eslint-config-next）/ `cloudflare`（OpenNext・wrangler）/ `radix-ui` / 開発用 / 本番用 の 5 本まで |
+| GitHub Actions | 毎月                      | 1 本にまとめる                                                                                               |
+
+- まとめるのはマイナー・パッチ更新のみ。**メジャー更新は 1 パッケージにつき 1 本の PR** になる
+- 同時に開く npm の PR は 5 本まで。マージ（またはクローズ）すると次が作成される
+
+### PR のレビュー手順
+
+1. CI（Lint & Typecheck / Unit Tests & Coverage / Cloudflare OpenNext Build）が通っていることを確認する
+2. PR の説明にあるリリースノートで、破壊的変更・非推奨がないか確認する
+3. 次の更新は CI だけでは検出できない挙動の変化があり得るため、PR のブランチで `npm run preview` を実行して管理者ログイン・成績入力・ランキング表示を確認する
+   - `next` / `cloudflare` グループ（Workers 上の動作に直結）
+   - `radix-ui` グループ（画面のダイアログ・セレクト）
+4. 問題なければマージする。リリースは通常どおりタグで行う（マージしただけでは本番に反映されない）
+
+### 更新しないと決めているパッケージ
+
+`.github/dependabot.yml` の `ignore` で、次のメジャー更新は通知しない。解消したら該当の項目を削除する。
+
+| パッケージ                    | 理由                                                                                                     |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `next` / `eslint-config-next` | OpenNext が `next` を 16 未満に制限している（peerDependencies）。OpenNext が対応したら Next.js 16 へ移行 |
+| `tailwindcss`                 | v4 は設定・CSS の形式が変わる（現在は v3）                                                               |
+| `zod`                         | v4 はエラーメッセージ指定の API が変わる。`lib/*-input.ts` は v3 の書き方                                |
+| `eslint`                      | `eslint-config-next` が対応するまで 9 系に留める                                                         |
+
+### 注意
+
+- Dependabot の PR は lockfile も更新する。CI の `npm ci` で検証されるため、**CI が失敗している PR はマージしない**
+- 手動で依存を更新するときは `npx npm@10 install ...` を使う（npm 11 で更新した lockfile は CI で失敗することがある）
+- `package.json` に `"latest"` を指定しない（Dependabot が更新対象として扱えず、バージョンも固定されない）
+- 脆弱性の通知・自動修正（Dependabot alerts / security updates）は、上記の定期更新とは別にリポジトリの設定で有効にする（下記「初期設定」）
+
+## 5. 初期設定（済んでいれば不要）
 
 ### GitHub
 
@@ -73,6 +112,9 @@ git push origin v1.2.0
   - `CLOUDFLARE_API_TOKEN`（権限: Account / Workers Scripts:Edit, Account / D1:Edit）
   - `CLOUDFLARE_ACCOUNT_ID`
 - main のブランチ保護: PR 必須、CI（Lint & Typecheck / Unit Tests & Coverage / Cloudflare OpenNext Build）必須
+- 脆弱性の通知と自動修正: Settings → Advanced Security（または Code security）で、次の 2 つを有効にする
+  - **Dependabot alerts**（脆弱性のある依存を検出して通知）
+  - **Dependabot security updates**（脆弱性の修正 PR を自動作成。定期更新の `ignore` 設定に関係なく作成される）
 
 ### 管理者パスワードの設定・変更（本番 Secret）
 
