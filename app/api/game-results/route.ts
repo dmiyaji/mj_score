@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { isAuthenticated } from "@/lib/auth"
-import { gameResultOperations, playerOperations } from "@/lib/database"
+import { gameResultOperations, playerOperations, seasonOperations } from "@/lib/database"
 import { buildNewPlayerResults, createGameResultSchema } from "@/lib/game-result-input"
 import { firstIssueMessage } from "@/lib/validation"
 import { getDb } from "@/lib/get-db"
@@ -42,6 +42,16 @@ export async function POST(request: NextRequest) {
     const isAdmin = await isAuthenticated()
     const seasonId = isAdmin ? parsed.data.seasonId : undefined
     const stage = isAdmin ? parsed.data.stage : undefined
+
+    // アクティブなシーズンがないと登録先が決まらない。利用者が対処できる内容なので 500 ではなく 409 で案内する
+    if (!seasonId || !stage) {
+      if (!(await seasonOperations.getActive(db))) {
+        return NextResponse.json(
+          { error: "アクティブなシーズンが設定されていません。先にシーズンを作成してアクティブにしてください" },
+          { status: 409 }
+        )
+      }
+    }
 
     const gameResult = await gameResultOperations.create(db, gameDate, built.results, seasonId, stage)
     return NextResponse.json(gameResult, { status: 201 })
