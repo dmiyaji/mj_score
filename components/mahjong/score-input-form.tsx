@@ -168,12 +168,6 @@ export default function ScoreInputForm({ teams, registeredPlayers, seasons = [],
 
   const currentTotal = players.reduce((sum, player) => sum + player.score, 0)
 
-  const getTeamColor = (teamId: string | null) => {
-    if (!teamId) return "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border-gray-300"
-    const team = teams.find((t) => t.id === teamId)
-    return team ? team.color : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border-gray-300"
-  }
-
   const activeSeason = seasons.find((s) => s.is_active)
 
   return (

@@ -2,13 +2,12 @@
 import { useState, useEffect } from "react"
 import type React from "react"
 
-import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, TrendingUp, TrendingDown, Crown, Medal, Star } from "lucide-react"
+import { Trophy } from "lucide-react"
 import type { Team, PlayerStats, Season } from "@/lib/types"
 
 interface PlayerRankingProps {
@@ -52,10 +51,10 @@ export default function PlayerRanking({ teams, playerStats, seasons = [], onLoad
   }
 
   // データをソートする関数
-  const sortData = (data: any[], key: string, direction: "asc" | "desc") => {
+  const sortData = <T extends object>(data: T[], key: string, direction: "asc" | "desc") => {
     return [...data].sort((a, b) => {
-      const aValue = a[key]
-      const bValue = b[key]
+      const aValue = (a as Record<string, unknown>)[key]
+      const bValue = (b as Record<string, unknown>)[key]
 
       if (typeof aValue === "number" && typeof bValue === "number") {
         return direction === "asc" ? aValue - bValue : bValue - aValue

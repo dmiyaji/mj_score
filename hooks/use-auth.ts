@@ -59,7 +59,7 @@ export function useAuth() {
     }
   }
 
-  const handleTabChange = (value: string) => {
+  const handleTabChange = <T extends string>(value: T): T | null => {
     if (requiresAuth(value) && !isAuthenticated) {
       setPendingView(value)
       setIsPasswordDialogOpen(true)

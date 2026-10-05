@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { User, Users, UserPlus, Edit, Trash2, Settings, Plus, Palette } from "lucide-react"
+import { Users, UserPlus, Edit, Trash2, Settings, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { playerApi, teamApi } from "@/lib/api-client"
 import type { Team, Player } from "@/lib/types"
@@ -284,12 +284,8 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
     }
   }
 
-  // ドラッグ＆ドロップの状態管理
-  const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null)
-
   // --- ドラッグ＆ドロップのイベントハンドラー ---
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, playerId: string) => {
-    setDraggedPlayerId(playerId)
     e.dataTransfer.setData("playerId", playerId)
     e.dataTransfer.effectAllowed = "move"
     // 見た目のドラッグ画像を少し半透明にする
@@ -300,7 +296,6 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
   }
 
   const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-    setDraggedPlayerId(null)
     const target = e.target as HTMLElement
     target.style.opacity = "1"
   }
@@ -322,13 +317,6 @@ export default function PlayerManagement({ teams, registeredPlayers, onDataUpdat
       // Optmistic UI Update: We drop it and let the updatePlayerTeam handle the API hit
       await updatePlayerTeam(playerId, targetTeamId)
     }
-  }
-
-  // チーム名を取得
-  const getTeamName = (teamId: string | null) => {
-    if (!teamId) return "未所属"
-    const team = teams.find((t) => t.id === teamId)
-    return team ? team.name : "未所属"
   }
 
   // チームカラーを取得

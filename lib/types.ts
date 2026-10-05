@@ -18,7 +18,7 @@ export interface Player {
   team_id: string | null
   created_at: string
   updated_at: string
-  teams?: Team
+  teams?: Team | null
 }
 
 export interface Season {
@@ -87,3 +87,11 @@ export interface TeamStats {
   fourths: number
   is_eliminated?: boolean
 }
+
+// 対局とプレイヤー別成績（GET /api/game-results の 1 件分）
+export type GameResultWithPlayers = GameResult & {
+  player_game_results: (PlayerGameResult & { players: Player })[]
+}
+
+// 履歴の編集中に画面で持つ行（取得した成績に、選択し直したプレイヤーの情報を持たせる）
+export type EditablePlayerGameResult = PlayerGameResult & { players: Player }

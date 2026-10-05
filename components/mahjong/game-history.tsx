@@ -11,12 +11,12 @@ import { ja } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
 import { gameResultApi } from "@/lib/api-client"
 import { calculateGamePoints } from "@/lib/scoring"
-import type { Team, Player, GameResult, PlayerGameResult, Season } from "@/lib/types"
+import type { Team, Player, Season, GameResultWithPlayers, EditablePlayerGameResult } from "@/lib/types"
 
 interface GameHistoryProps {
   teams: Team[]
   registeredPlayers: Player[]
-  gameResults: (GameResult & { player_game_results: (PlayerGameResult & { players: Player })[] })[]
+  gameResults: GameResultWithPlayers[]
   seasons?: Season[]
   onDataUpdate: () => void
 }
@@ -30,7 +30,7 @@ export default function GameHistory({
 }: GameHistoryProps) {
   const { toast } = useToast()
   const [editingGameId, setEditingGameId] = useState<string | null>(null)
-  const [editData, setEditData] = useState<any[] | null>(null)
+  const [editData, setEditData] = useState<EditablePlayerGameResult[] | null>(null)
 
   // ゲーム結果を削除
   const deleteGameResult = async (id: string) => {
@@ -50,7 +50,7 @@ export default function GameHistory({
     }
   }
 
-  const startEditing = (game: GameResult & { player_game_results: (PlayerGameResult & { players: Player })[] }) => {
+  const startEditing = (game: GameResultWithPlayers) => {
     setEditingGameId(game.id)
     setEditData(JSON.parse(JSON.stringify(game.player_game_results)))
   }
@@ -104,7 +104,7 @@ export default function GameHistory({
     }
   }
 
-  const updateEditData = (id: string, field: string, value: any) => {
+  const updateEditData = (id: string, field: keyof EditablePlayerGameResult, value: string | number | null) => {
     if (!editData) return
     const newData = editData.map((d) => {
       if (d.id === id) {
@@ -230,7 +230,7 @@ export default function GameHistory({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => startEditing(game as any)}
+                          onClick={() => startEditing(game)}
                           className="h-8 border-2 px-2 text-blue-600 transition-all duration-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                         >
                           <Edit2 className="mr-1 h-4 w-4" />

@@ -13,6 +13,21 @@ import DataManagement from "@/components/mahjong/data-management"
 import SeasonManagement from "@/components/mahjong/season-management"
 import PublicRanking from "@/components/public-ranking"
 
+const VIEWS = [
+  "input",
+  "playerRanking",
+  "teamRanking",
+  "playerManagement",
+  "gameHistory",
+  "dataManagement",
+  "seasonManagement",
+  "publicRanking",
+] as const
+
+type View = (typeof VIEWS)[number]
+
+const isView = (value: string): value is View => (VIEWS as readonly string[]).includes(value)
+
 export default function MahjongScoreManager() {
   const { seasons, teams, registeredPlayers, gameResults, playerStats, teamStats, loading, loadData, loadStats } =
     useMahjongData()
@@ -30,16 +45,7 @@ export default function MahjongScoreManager() {
     logout,
   } = useAuth()
 
-  const [currentView, setCurrentView] = useState<
-    | "input"
-    | "playerRanking"
-    | "teamRanking"
-    | "playerManagement"
-    | "gameHistory"
-    | "dataManagement"
-    | "seasonManagement"
-    | "publicRanking"
-  >("input")
+  const [currentView, setCurrentView] = useState<View>("input")
 
   // 公開ランキング用の状態
   const [publicRankingTitle, setPublicRankingTitle] = useState("DAY X")
@@ -49,17 +55,17 @@ export default function MahjongScoreManager() {
 
   // タブ変更処理
   const onTabChange = (value: string) => {
-    const newView = handleTabChange(value)
+    const newView = isView(value) ? handleTabChange(value) : null
     if (newView) {
-      setCurrentView(newView as any)
+      setCurrentView(newView)
     }
   }
 
   // パスワード認証処理
   const onPasswordSubmit = async () => {
     const newView = await handlePasswordSubmit()
-    if (newView) {
-      setCurrentView(newView as any)
+    if (newView && isView(newView)) {
+      setCurrentView(newView)
     }
   }
 
