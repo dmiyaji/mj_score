@@ -9,6 +9,54 @@ import {
 } from "./types"
 import type { ImportRows, ImportTable, RestoreData } from "./admin-input"
 
+// SQL の SELECT 結果の行（D1 は数値を文字列で返す場合があるため、集計時に Number() で変換する）
+type PlayerRow = Omit<Player, "teams"> & { teams: string | Team | null }
+
+type PlayerResultRow = Omit<PlayerGameResult, "team_id" | "players" | "game_results"> & {
+  pgr_team_id: string | null
+  players: string | Player
+}
+
+type PlayerStatsSourceRow = {
+  id: string
+  name: string
+  team_id: string | null
+  team_name: string
+  team_color: string
+}
+
+type PlayerScoreRow = PlayerStatsSourceRow & {
+  points: number | string
+  score: number | string
+  penalty_points: number | string | null
+  rank: number | string
+  stage: string | null
+}
+
+type TeamScoreRow = {
+  team_id: string
+  team_name: string
+  team_color: string
+  player_id: string
+  points: number | string
+  score: number | string
+  penalty_points: number | string | null
+  rank: number | string
+  stage: string | null
+}
+
+// JSON_OBJECT の結果は文字列で返るため、オブジェクトに戻す
+function parseJson<T>(value: string | T | null | undefined): T | null {
+  if (value === null || value === undefined) return null
+  return typeof value === "string" ? (JSON.parse(value) as T) : value
+}
+
+// CSV の 1 行（列名 → 値）。interface の Team も渡せるよう、キーを限定しない形にする
+type CsvRow = { [column: string]: string | number | boolean | null | undefined | object }
+
+// SQL に渡すバインド値
+type SqlParam = string | number | null
+
 // シーズン関連の操作
 export const seasonOperations = {
   async getAll(db: D1Database): Promise<Season[]> {
@@ -163,12 +211,12 @@ export const playerOperations = {
       ORDER BY p.name
     `
       )
-      .all()
+      .all<PlayerRow>()
 
-    return (results as any[]).map((row) => ({
+    return results.map((row) => ({
       ...row,
-      teams: row.teams && typeof row.teams === "string" ? JSON.parse(row.teams) : row.teams || null,
-    })) as Player[]
+      teams: parseJson<Team>(row.teams),
+    }))
   },
 
   // プレイヤー作成
@@ -255,17 +303,17 @@ export const gameResultOperations = {
       `
         )
         .bind(game.id)
-        .all()
+        .all<PlayerResultRow>()
 
-      const player_game_results = (playerRows as any[]).map((row) => ({
+      const player_game_results = playerRows.map(({ pgr_team_id, players, ...row }) => ({
         ...row,
-        team_id: row.pgr_team_id,
+        team_id: pgr_team_id,
         points: Number(row.points),
         score: Number(row.score),
         penalty_points: Number(row.penalty_points || 0),
         rank: Number(row.rank),
-        players: row.players && typeof row.players === "string" ? JSON.parse(row.players) : row.players,
-      })) as (PlayerGameResult & { players: Player })[]
+        players: parseJson<Player>(players) as Player,
+      }))
 
       results.push({
         ...game,
@@ -395,7 +443,7 @@ export const gameResultOperations = {
     const now = new Date().toISOString().slice(0, 19).replace("T", " ")
 
     let updateQuery = "UPDATE game_results SET updated_at = ?"
-    const updateParams: any[] = [now]
+    const updateParams: SqlParam[] = [now]
 
     if (seasonId) {
       updateQuery += ", season_id = ?"
@@ -458,11 +506,11 @@ export const statsOperations = {
             `SELECT p.id, p.name, p.team_id, COALESCE(t.name, '未所属') as team_name, COALESCE(t.color, 'bg-gray-100 text-gray-800') as team_color FROM players p LEFT JOIN teams t ON p.team_id = t.id`
           )
 
-    const { results: allPlayers } = await allPlayersQuery.all()
+    const { results: allPlayers } = await allPlayersQuery.all<PlayerStatsSourceRow>()
 
     const playerStatsMap = new Map<string, PlayerStats & { regular_total: number; final_total: number }>()
 
-    ;(allPlayers as any[]).forEach((p) => {
+    allPlayers.forEach((p) => {
       playerStatsMap.set(p.id, {
         id: p.id,
         name: p.name,
@@ -482,8 +530,8 @@ export const statsOperations = {
       })
     })
 
-    const whereConditions = []
-    const queryParams: any[] = []
+    const whereConditions: string[] = []
+    const queryParams: SqlParam[] = []
 
     if (teamFilter && teamFilter !== "all") {
       whereConditions.push("pgr.team_id = ?")
@@ -531,10 +579,10 @@ export const statsOperations = {
     `
       )
       .bind(...queryParams)
-      .all()
+      .all<PlayerScoreRow>()
 
     // データを集計
-    ;(results as any[]).forEach((result: any) => {
+    results.forEach((result) => {
       const playerId = result.id
 
       if (!playerStatsMap.has(playerId)) {
@@ -624,7 +672,7 @@ export const statsOperations = {
     stage?: "REGULAR" | "FINAL"
   ): Promise<TeamStats[]> {
     const whereConditions = ["t.name != '未所属'"] // 未所属チームを除外
-    const queryParams: any[] = []
+    const queryParams: SqlParam[] = []
 
     if (dateFrom) {
       whereConditions.push("gr.game_date >= ?")
@@ -665,13 +713,13 @@ export const statsOperations = {
     `
       )
       .bind(...queryParams)
-      .all()
+      .all<TeamScoreRow>()
 
     // データを集計
     const teamStatsMap = new Map<string, TeamStats & { regular_total: number; final_total: number }>()
     const playerCountMap = new Map<string, Set<string>>()
 
-    ;(results as any[]).forEach((result: any) => {
+    results.forEach((result) => {
       const teamId = result.team_id
       const playerId = result.player_id
 
@@ -806,7 +854,7 @@ export const exportOperations = {
         seasons,
         exportDate: new Date().toISOString(),
       }
-    } catch (error) {
+    } catch {
       throw new Error("データのエクスポートに失敗しました")
     }
   },
@@ -814,22 +862,22 @@ export const exportOperations = {
   // CSVフォーマットでエクスポート
   async exportToCSV(db: D1Database, tableName: "teams" | "players" | "gameResults") {
     try {
-      let data: any[] = []
+      let data: CsvRow[] = []
       let headers: string[] = []
 
       switch (tableName) {
         case "teams":
-          data = await teamOperations.getAll(db)
           headers = ["id", "name", "color", "created_at", "updated_at"]
+          data = (await teamOperations.getAll(db)).map((team) => ({ ...team }))
           break
         case "players":
-          data = await playerOperations.getAll(db)
           headers = ["id", "name", "team_id", "created_at", "updated_at"]
+          data = (await playerOperations.getAll(db)).map(({ teams: _teams, ...player }) => player)
           break
-        case "gameResults":
+        case "gameResults": {
           const gameResults = await gameResultOperations.getAll(db)
-          data = gameResults.flatMap((game: any) =>
-            game.player_game_results.map((result: any) => ({
+          data = gameResults.flatMap((game) =>
+            game.player_game_results.map((result) => ({
               game_id: game.id,
               game_date: game.game_date,
               season_id: game.season_id || "",
@@ -861,6 +909,7 @@ export const exportOperations = {
             "created_at",
           ]
           break
+        }
       }
 
       // CSVヘッダー
@@ -874,13 +923,13 @@ export const exportOperations = {
           if (typeof value === "string" && (value.includes(",") || value.includes("\n") || value.includes('"'))) {
             return `"${value.replace(/"/g, '""')}"`
           }
-          return value || ""
+          return typeof value === "object" ? "" : (value ?? "")
         })
         csv += values.join(",") + "\n"
       })
 
       return csv
-    } catch (error) {
+    } catch {
       throw new Error(`${tableName}のCSVエクスポートに失敗しました`)
     }
   },
@@ -896,11 +945,11 @@ export const importOperations = {
     }
 
     const headers = lines[0].split(",").map((h) => h.trim())
-    const data = []
+    const data: Record<string, string>[] = []
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(",").map((v) => v.trim().replace(/^"|"$/g, ""))
-      const row: any = {}
+      const row: Record<string, string> = {}
 
       headers.forEach((header, index) => {
         row[header] = values[index] || ""
@@ -932,7 +981,7 @@ export const importOperations = {
         return data.map((row) => ({
           id: row.id,
           name: row.name,
-          is_active: row.is_active === "1" || row.is_active === "true" || row.is_active === 1,
+          is_active: row.is_active === "1" || row.is_active === "true",
           current_stage: row.current_stage,
           created_at: row.created_at,
           updated_at: row.updated_at,

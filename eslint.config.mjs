@@ -16,13 +16,15 @@ const eslintConfig = [
       "next-env.d.ts",
       "cloudflare-env.d.ts",
       "components/ui/**", // shadcn/ui の生成コード
+      "hooks/use-toast.ts", // shadcn/ui の生成コード
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript", "prettier"),
   {
     rules: {
-      // v0 由来のコードに多数あるため当面は警告に留め、段階的に解消する
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
+      // 分割代入で不要なキーを除くとき（const { teams: _teams, ...rest } = row）は、先頭が _ の変数を無視する
+      "@typescript-eslint/no-unused-vars": ["error", { varsIgnorePattern: "^_", argsIgnorePattern: "^_" }],
     },
   },
 ]

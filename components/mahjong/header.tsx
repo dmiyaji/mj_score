@@ -16,7 +16,6 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Users,
-  User,
   History,
   Database,
   Share2,
@@ -128,6 +127,8 @@ export default function Header({
         <div className="mb-4 flex items-center justify-between gap-2 sm:gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <div className="shrink-0 rounded-lg border border-gray-100 bg-white p-1.5 shadow-lg sm:rounded-xl sm:p-2">
+              {/* 画像最適化（next/image）は使わない構成（next.config の images.unoptimized）のため <img> のままにする */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/nine-league-logo.webp"
                 alt="Nine League Logo"

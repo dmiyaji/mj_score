@@ -1,4 +1,4 @@
-import type { Team, Player, GameResult, PlayerStats, TeamStats } from "./types"
+import type { Team, Player, GameResult, GameResultWithPlayers, PlayerStats, Season, TeamStats } from "./types"
 
 // Base API client functions
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -95,12 +95,12 @@ export const playerApi = {
 
 // Season operations
 export const seasonApi = {
-  async getAll(): Promise<any[]> {
-    return apiRequest<any[]>("/seasons")
+  async getAll(): Promise<Season[]> {
+    return apiRequest<Season[]>("/seasons")
   },
 
-  async create(name: string): Promise<any> {
-    return apiRequest<any>("/seasons", {
+  async create(name: string): Promise<Season> {
+    return apiRequest<Season>("/seasons", {
       method: "POST",
       body: JSON.stringify({ name }),
     })
@@ -128,8 +128,8 @@ export const seasonApi = {
 
 // Game result operations
 export const gameResultApi = {
-  async getAll(): Promise<(GameResult & { player_game_results: any[] })[]> {
-    return apiRequest<(GameResult & { player_game_results: any[] })[]>("/game-results")
+  async getAll(): Promise<GameResultWithPlayers[]> {
+    return apiRequest<GameResultWithPlayers[]>("/game-results")
   },
 
   async create(
@@ -156,7 +156,7 @@ export const gameResultApi = {
     playerResults: Array<{
       id: string
       playerId: string
-      teamId: string
+      teamId: string | null
       score: number
       points: number
       penaltyPoints?: number
@@ -272,17 +272,10 @@ export const importApi = {
     })
   },
 
-  async restoreDatabase(data: any) {
+  async restoreDatabase(data: unknown) {
     return apiRequest("/import", {
       method: "POST",
       body: JSON.stringify({ type: "restore", data }),
-    })
-  },
-
-  async importSeasons(seasons: any[]) {
-    return apiRequest("/import", {
-      method: "POST",
-      body: JSON.stringify({ type: "seasons", data: seasons }),
     })
   },
 }

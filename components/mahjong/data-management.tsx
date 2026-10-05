@@ -34,7 +34,6 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
   const [importType, setImportType] = useState<"teams" | "players" | "gameResults" | "seasons" | "restore">("teams")
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
-  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false)
   const { toast } = useToast()
 
   // データエクスポート
@@ -114,7 +113,7 @@ export default function DataManagement({ onDataUpdate }: DataManagementProps) {
           throw new Error("インポートするデータが見つかりません")
         }
       } else if (importFile.name.endsWith(".csv")) {
-        const result = await importApi.parseCSVAndImport(fileContent, importType)
+        await importApi.parseCSVAndImport(fileContent, importType)
 
         if (importType === "teams") {
           // Data already imported by parseCSVAndImport

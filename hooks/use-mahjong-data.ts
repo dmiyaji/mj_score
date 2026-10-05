@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { teamApi, playerApi, gameResultApi, statsApi } from "@/lib/api-client"
-import type { Team, Player, PlayerStats, TeamStats, Season } from "@/lib/types"
+import type { Team, Player, PlayerStats, TeamStats, Season, GameResultWithPlayers } from "@/lib/types"
 import { seasonApi } from "@/lib/api-client"
 
 export function useMahjongData() {
   const [seasons, setSeasons] = useState<Season[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [registeredPlayers, setRegisteredPlayers] = useState<Player[]>([])
-  const [gameResults, setGameResults] = useState<any[]>([])
+  const [gameResults, setGameResults] = useState<GameResultWithPlayers[]>([])
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([])
   const [teamStats, setTeamStats] = useState<TeamStats[]>([])
   const [loading, setLoading] = useState(false)

@@ -2,23 +2,12 @@
 import { useState, useEffect } from "react"
 import React from "react"
 
-import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { TableHead, Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Users,
-  TrendingUp,
-  TrendingDown,
-  Crown,
-  Medal,
-  Star,
-  Map as MapIcon,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react"
+import { Users, ChevronDown, ChevronUp } from "lucide-react"
 import type { TeamStats, Season, PlayerStats } from "@/lib/types"
 import { statsApi } from "@/lib/api-client"
 
@@ -67,10 +56,10 @@ export default function TeamRanking({ teamStats, seasons = [], onLoadStats }: Te
   }
 
   // データをソートする関数
-  const sortData = (data: any[], key: string, direction: "asc" | "desc") => {
+  const sortData = <T extends object>(data: T[], key: string, direction: "asc" | "desc") => {
     return [...data].sort((a, b) => {
-      const aValue = a[key]
-      const bValue = b[key]
+      const aValue = (a as Record<string, unknown>)[key]
+      const bValue = (b as Record<string, unknown>)[key]
 
       if (typeof aValue === "number" && typeof bValue === "number") {
         return direction === "asc" ? aValue - bValue : bValue - aValue
