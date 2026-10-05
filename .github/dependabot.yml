@@ -1,0 +1,84 @@
+# Dependabot: 依存パッケージと GitHub Actions を毎週チェックし、更新の PR を自動作成する
+# 作成された PR は通常の PR と同じく CI（ci.yml）が実行される。マージ前に CI の結果を確認すること。
+# 詳細: docs/RELEASE.md「依存パッケージの更新（Dependabot）」
+version: 2
+
+updates:
+  # ─── npm パッケージ ───
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+
+    # 関連するパッケージはまとめて 1 本の PR にする（個別の PR が大量に出るのを防ぐ）
+    # 対象はマイナー・パッチ更新のみ。メジャー更新は破壊的変更を含むため個別の PR にする
+    groups:
+      # Next.js と eslint-config-next は同じバージョンに揃える必要がある
+      next:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+        update-types: ["minor", "patch"]
+      # OpenNext と wrangler は互いの peerDependencies で対応バージョンが決まる
+      cloudflare:
+        patterns:
+          - "@opennextjs/*"
+          - "@cloudflare/*"
+          - "wrangler"
+        update-types: ["minor", "patch"]
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+        update-types: ["minor", "patch"]
+      dev-dependencies:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+        exclude-patterns:
+          - "eslint-config-next"
+          - "@cloudflare/*"
+          - "wrangler"
+      production-dependencies:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+        exclude-patterns:
+          - "next"
+          - "@opennextjs/*"
+          - "@radix-ui/*"
+
+    ignore:
+      # OpenNext が next を 16 未満に制限している（peerDependencies: >=15.5.27 <16）。
+      # OpenNext が対応したら、この項目を削除して Next.js 16 への移行を行う
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-config-next"
+        update-types: ["version-update:semver-major"]
+      # コードの書き換えを伴うメジャー更新は、必要になったときに手動で行う
+      # - tailwindcss: v4 は設定ファイル・CSS の形式が変わる（現在は v3）
+      # - zod: v4 はエラーメッセージ指定の API が変わる（lib/*-input.ts は v3 の書き方）
+      # - eslint: eslint-config-next が対応するまで 9 系に留める
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+
+  # ─── GitHub Actions（ci.yml / release.yml で使っている actions） ───
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      timezone: "Asia/Tokyo"
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

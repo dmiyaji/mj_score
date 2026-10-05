@@ -20,7 +20,8 @@
 - 応答・コミットメッセージ・PR 説明は日本語で書く
 - スキーマ変更は `migrations/` に連番の新規ファイルを追加する。既存のマイグレーションは変更しない。後方互換な形（カラム追加等）で書く
 - `wrangler.jsonc` や `.dev.vars.example` を変更したら `npm run types:cf` で `cloudflare-env.d.ts` を再生成する
-- 依存関係の追加・更新は `npx npm@10 install ...` で行う（npm 11 で更新した lockfile は CI の `npm ci` で失敗することがある）
+- 依存関係の追加・更新は `npx npm@10 install ...` で行う（npm 11 で更新した lockfile は CI の `npm ci` で失敗することがある）。`package.json` に `"latest"` は指定しない
+- 依存パッケージの定期更新は Dependabot が PR を作る（[.github/dependabot.yml](.github/dependabot.yml)）。`next` 16・`tailwindcss` 4・`zod` 4・`eslint` 10 は意図的に更新対象外（理由は [docs/RELEASE.md](docs/RELEASE.md)）
 - 本番へのデプロイ・本番 D1 への書き込みはローカルから行わない（[docs/RELEASE.md](docs/RELEASE.md)）
 - `.local/`・`backup*.sql` など本番データを含むファイルはコミットしない
 
