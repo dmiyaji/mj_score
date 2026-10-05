@@ -15,6 +15,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid import type" }, { status: 400 })
     }
 
+    if (type === "restore") {
+      // 全削除を伴うため、エクスポート形式（4 つの配列を持つオブジェクト）のみ受け付ける
+      const keys = ["teams", "players", "gameResults", "seasons"]
+      const valid = data && typeof data === "object" && keys.every((k) => Array.isArray(data[k]))
+      if (csvText || !valid) {
+        return NextResponse.json(
+          { error: "復元には teams / players / gameResults / seasons を含む JSON が必要です" },
+          { status: 400 }
+        )
+      }
+    }
+
     let importData
     if (csvText) {
       // Parse CSV text
